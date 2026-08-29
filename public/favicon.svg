@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Back Green Chat Bubble -->
+  <path d="M60 28c16.57 0 30 13.43 30 30 0 7.82-2.99 14.94-7.9 20.3L86 92l-14.2-4.1C68.3 89.8 64.3 91 60 91c-16.57 0-30-13.43-30-30 0-1.84.17-3.64.48-5.38C36.72 36.37 47.45 28 60 28z" fill="#1ea95c"/>
+  <!-- Front Blue Chat Bubble -->
+  <path d="M42 9c-19.33 0-35 15.67-35 35 0 9.07 3.45 17.33 9.14 23.55L10 83l16.45-4.75C31.12 80.82 36.38 82 42 82c19.33 0 35-15.67 35-35S61.33 9 42 9z" fill="#0084ff" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- White Medical Cross -->
+  <rect x="36" y="25" width="12" height="40" rx="4" fill="#ffffff"/>
+  <rect x="22" y="39" width="40" height="12" rx="4" fill="#ffffff"/>
+</svg>

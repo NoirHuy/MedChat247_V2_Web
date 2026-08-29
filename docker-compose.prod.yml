@@ -1,0 +1,37 @@
+# Production overlay: adds Caddy in front for automatic HTTPS (Let's
+# Encrypt) and stops publishing the frontend's port 80 directly — Caddy is
+# the only thing exposed to the internet now.
+#
+# Set DOMAIN=your-real-domain in the root .env before running:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    environment:
+      CLIENT_ORIGIN: https://${DOMAIN}
+      COOKIE_SECURE: 'true'
+
+  frontend:
+    ports: !reset []
+    expose:
+      - '7860'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '127.0.0.1:8080:8080'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+volumes:
+  caddy_data:
+  caddy_config:

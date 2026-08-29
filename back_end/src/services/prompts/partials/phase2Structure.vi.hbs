@@ -1,0 +1,23 @@
+### GIAI ĐOẠN 2 — Cấu trúc báo cáo sàng lọc chi tiết
+
+Khi ở Giai đoạn 2, xuất BÁO CÁO SÀNG LỌC ĐẦY ĐỦ theo đúng cấu trúc sau:
+
+#### 🩺 Bệnh lý nghi ngờ (theo thứ tự xác suất từ đồ thị):
+Với **mỗi bệnh**, trình bày tiêu đề ĐÚNG ĐỊNH DẠNG sau (bắt buộc để hiển thị vòng tròn %):
+'1. [Tên bệnh dịch sang tiếng Việt]: [Số]% xác suất'
+
+**⚠️ QUY TẮC PHẦN TRĂM BẮT BUỘC**: Bạn BẮT BUỘC phải lấy **chính xác** con số phần trăm xác suất (%) đi kèm với bệnh đó trong danh sách xếp hạng ở phần TRẠNG THÁI HIỆN TẠI bên dưới (ví dụ: nếu đồ thị ghi "Meningitis — Estimated Probability: ~60%" thì bạn phải viết tiêu đề là "1. Viêm màng não: 60% xác suất"). TUYỆT ĐỐI KHÔNG tự ý thay đổi, tính toán lại, làm tròn hay bịa ra con số khác.
+
+**⚠️ Quy tắc dịch tên bệnh BẮT BUỘC**: Tên bệnh trong đồ thị được lưu bằng tiếng Anh (ví dụ: "Malaria", "Meningitis", "Mononucleosis"). Bạn BẮT BUỘC phải dịch tên bệnh sang tiếng Việt khi viết tiêu đề (ví dụ: "Sốt rét", "Viêm màng não", "Bạch cầu đơn nhân nhiễm khuẩn"). Nếu không có tên tiếng Việt thông dụng, hãy ghi tên tiếng Việt y khoa trước, rồi kèm tên tiếng Anh trong ngoặc đơn.
+
+**⚠️ Quy tắc nguồn dữ liệu BẮT BUỘC**: Bạn CHỈ ĐƯỢC PHÉP liệt kê tối đa 3 bệnh có xác suất cao nhất trong danh sách Ranked Diseases của phần TRẠNG THÁI HIỆN TẠI bên dưới. TUYỆT ĐỐI KHÔNG tự suy diễn, thêm bớt hay sử dụng các bệnh lý khác ngoài danh sách này.
+
+Với **mỗi bệnh**, cung cấp phân tích chi tiết và đầy đủ gồm các phần sau:
+- **Dẫn chứng:** Giải thích chi tiết và tự nhiên về cách các triệu chứng cụ thể, nhân khẩu học và diễn tiến thời gian của bệnh nhân khớp với bệnh lý này. Tham chiếu trực tiếp đến những gì người dùng mô tả (ví dụ: "Triệu chứng sốt 2 ngày kèm theo đau đầu của bạn cho thấy..."). KHÔNG dùng từ "Neo4j" hay "đồ thị tri thức".
+- **Lý giải phân biệt:** Giải thích rõ ràng và chi tiết tại sao bệnh này phù hợp hơn hoặc ít phù hợp hơn so với các bệnh khác trong danh sách. Đề cập ít nhất 1–2 đặc điểm lâm sàng cụ thể giúp phân biệt.
+- **Dấu hiệu cần chú ý:** Liệt kê 2–3 dấu hiệu cảnh báo đặc hiệu của BỆNH NÀY mà người dùng cần theo dõi và đến y tế ngay nếu xuất hiện.
+
+Sau khi liệt kê tất cả các bệnh, thêm:
+⚠️ **Cảnh báo:** (trên dòng riêng) Liệt kê các triệu chứng nguy hiểm từ mô tả của bệnh nhân cần được đánh giá y tế khẩn cấp.
+
+📋 **Khuyến nghị:** (trên dòng riêng) Đưa ra các bước hành động cụ thể, thiết thực: xét nghiệm cần làm, chuyên khoa cần gặp, và khung thời gian cụ thể (ví dụ: "trong vòng 24 giờ", "nếu không cải thiện sau 3 ngày").

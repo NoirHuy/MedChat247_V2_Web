@@ -1,0 +1,390 @@
+html {
+  scroll-behavior: smooth;
+}
+
+.legal-shell {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  line-height: 1.6;
+}
+
+/* Header Navbar - Matches main app header seamlessly */
+.legal-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.legal-nav__inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legal-nav__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.legal-nav__logo {
+  font-size: 22px;
+}
+
+.legal-nav__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Matching single language button design */
+.legal-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.legal-lang-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--text-muted);
+}
+
+.legal-nav__back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.legal-nav__back-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+/* Container */
+.legal-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 36px 24px 70px;
+}
+
+/* Document Header */
+.legal-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 36px;
+}
+
+.legal-header__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.legal-header__title {
+  font-size: clamp(26px, 3.5vw, 36px);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.legal-header__subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.legal-header__date {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 24px;
+}
+
+/* Segmented Control Pill Tabs (ChatGPT Style) */
+.legal-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.05));
+  border-radius: var(--radius-pill, 9999px);
+}
+
+.legal-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill, 9999px);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.legal-tab:hover {
+  color: var(--text-primary);
+}
+
+.legal-tab--active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+/* Callout Banners (ChatGPT Minimalist Left Accent Bar) */
+.legal-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 32px;
+  background: var(--bg-surface-hover);
+  border: 1px solid var(--border-subtle);
+}
+
+.legal-callout--danger {
+  border-left: 4px solid #ef4444;
+}
+
+.legal-callout--danger .legal-callout__icon {
+  color: #ef4444;
+}
+
+.legal-callout--success {
+  border-left: 4px solid #0084ff;
+}
+
+.legal-callout--success .legal-callout__icon {
+  color: #0084ff;
+}
+
+.legal-callout__icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.legal-callout__content h4 {
+  margin: 0 0 4px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.legal-callout__content p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* Legal Layout Grid */
+.legal-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+/* Sidebar Table of Contents */
+.legal-toc {
+  position: sticky;
+  top: 84px;
+  padding: 12px 0;
+}
+
+.legal-toc__title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 12px 10px;
+}
+
+.legal-toc__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legal-toc__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.legal-toc__link:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.legal-toc__check {
+  font-size: 13px;
+  color: var(--bg-accent);
+  opacity: 0.7;
+}
+
+/* Body Section Content (ChatGPT Clean Flow Layout) */
+.legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.legal-section {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  scroll-margin-top: 84px;
+}
+
+.legal-section:last-child {
+  border-bottom: none;
+}
+
+.legal-section__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.legal-section__icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+.legal-section h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.legal-section__text {
+  margin: 0;
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* Footer */
+.legal-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.legal-footer__copy {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.legal-footer__links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legal-footer__links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.legal-footer__links a:hover {
+  color: var(--text-primary);
+}
+
+.legal-footer__dot {
+  color: var(--border-strong);
+  font-size: 9px;
+}
+
+/* Responsive */
+@media (max-width: 840px) {
+  .legal-layout {
+    grid-template-columns: 1fr;
+  }
+  .legal-toc {
+    display: none;
+  }
+  .legal-footer {
+    flex-direction: column;
+    text-align: center;
+  }
+}

@@ -1,0 +1,23 @@
+
+(medchat_proxy) {
+	handle /api/* {
+		reverse_proxy backend:4000 {
+			# Disable buffering for streaming responses (chat, SSE)
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy frontend:7860
+	}
+}
+
+# Direct deployments terminate TLS here. Caddy redirects HTTP to HTTPS.
+{$DOMAIN} {
+	import medchat_proxy
+}
+
+# OneShield terminates TLS upstream and reaches this internal HTTP listener.
+# Keep it available because the VPS proxy is configured to use port 8080.
+:8080 {
+	import medchat_proxy
+}

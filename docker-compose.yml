@@ -1,0 +1,193 @@
+services:
+  backend:
+    build:
+      context: ./back_end
+    container_name: medchat-backend
+    env_file:
+      - ./back_end/.env
+    environment:
+      # Overrides whatever's in back_end/.env — inside Compose, the
+      # frontend is reached at this origin, not the local dev ports.
+      CLIENT_ORIGIN: http://localhost:8080
+      # Root credentials are required (see MONGO_ROOT_* in .env.example).
+      # Keep the password alphanumeric to avoid URI-escaping issues.
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}:${MONGO_ROOT_PASS:?Set MONGO_ROOT_PASS in .env}@mongodb:27017/medchat?authSource=admin
+      NEO4J_URI: bolt://neo4j:7687
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
+    volumes:
+      - backend_data:/app/data
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:4000:4000'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:$${PORT:-4000}/api/monitoring/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_URL: ''
+        # Sourced from the root .env (same value used by `npm run dev`).
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    container_name: medchat-frontend
+    depends_on:
+      - backend
+    env_file:
+      - ./back_end/.env
+    environment:
+      - PORT=7860
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}:${MONGO_ROOT_PASS:?Set MONGO_ROOT_PASS in .env}@mongodb:27017/medchat?authSource=admin
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
+    ports:
+      - '127.0.0.1:8080:7860'
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  mongodb:
+    image: mongo:8.0
+    container_name: medchat-mongodb
+    # Root user is created on first start. NEVER deploy with the example
+    # values from .env.example — rotate them for any real deployment.
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASS:?Set MONGO_ROOT_PASS in .env}
+    ports:
+      - '127.0.0.1:27018:27017'
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Daily MongoDB dump into ./backups (kept 14 days). Copy this folder
+  # off-site regularly — Docker volumes alone are not a backup strategy.
+  db-backup:
+    image: mongo:8.0
+    container_name: medchat-db-backup
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:?Set MONGO_ROOT_USER in .env}:${MONGO_ROOT_PASS:?Set MONGO_ROOT_PASS in .env}@mongodb:27017/medchat?authSource=admin
+    volumes:
+      - ./backups:/backups
+    restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          ts=$$(date +%Y%m%d_%H%M%S)
+          echo "[db-backup] dumping to /backups/medchat_$$ts.archive.gz"
+          mongodump --uri "$$MONGODB_URI" --archive=/backups/medchat_$$ts.archive.gz --gzip || echo "[db-backup] dump FAILED"
+          find /backups -name '*.archive.gz' -mtime +14 -delete 2>/dev/null || true
+          sleep 86400
+        done
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  ninerouter:
+    image: decolua/9router:latest
+    container_name: medchat-ninerouter
+    ports:
+      - '20128:20128'
+    environment:
+      - DATA_DIR=/app/data
+    volumes:
+      - ninerouter_data:/app/data
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5.18-community
+    container_name: medchat-neo4j
+    environment:
+      # Set NEO4J_AUTH in .env before first start. The backend refuses to boot
+      # in production when the well-known placeholder password is still used.
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/CHANGE_THIS_PASSWORD}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    ports:
+      - '127.0.0.1:7474:7474'
+      - '127.0.0.1:7687:7687'
+    volumes:
+      - neo4j_data:/data
+      # CSV nguồn cho Knowledge Graph dinh dưỡng (LOAD CSV file:///...)
+      - ./nutrition_service/data/processed:/var/lib/neo4j/import:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/7687'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
+  # ============================================================
+  # 🥗 Nutrition Service — Python Flask (internal only, :5000)
+  # Node back_end là cổng vào duy nhất (API Gateway), service này
+  # KHÔNG được expose ra public internet.
+  # ============================================================
+  nutrition:
+    build:
+      context: ./nutrition_service
+    container_name: medchat-nutrition
+    env_file:
+      - ./back_end/.env
+    environment:
+      - NUTRITION_PORT=5000
+      # Multi-database isolation: dữ liệu món ăn nằm trong database `nutrition`,
+      # tách biệt hoàn toàn với database `neo4j` của GraphRAG y khoa.
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_DATABASE=nutrition
+      # LLM_BASE_URL / LLM_API_KEY / LLM_MODEL fallback về NINEROUTER_* / OPENROUTER_MODEL_CHAT
+      # trong back_end/.env nếu không set riêng (xem nutrition_service/src/core/settings.py).
+      - LLM_BASE_URL=${NUTRITION_LLM_BASE_URL:-}
+      - LLM_API_KEY=${NUTRITION_LLM_API_KEY:-}
+      - LLM_MODEL=${NUTRITION_LLM_MODEL:-}
+    ports:
+      # Bind localhost-only để tiện debug/dev trên VPS, không mở ra internet.
+      - '127.0.0.1:5000:5000'
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: medchat-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  backend_data:
+  mongodb_data:
+  ninerouter_data:
+  neo4j_data:
+  redis_data:
