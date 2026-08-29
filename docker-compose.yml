@@ -158,7 +158,7 @@ services:
       # Multi-database isolation: dữ liệu món ăn nằm trong database `nutrition`,
       # tách biệt hoàn toàn với database `neo4j` của GraphRAG y khoa.
       - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_DATABASE=nutrition
+      - NEO4J_DATABASE=${NUTRITION_NEO4J_DATABASE:-nutrition}
       # LLM_BASE_URL / LLM_API_KEY / LLM_MODEL fallback về NINEROUTER_* / OPENROUTER_MODEL_CHAT
       # trong back_end/.env nếu không set riêng (xem nutrition_service/src/core/settings.py).
       - LLM_BASE_URL=${NUTRITION_LLM_BASE_URL:-}

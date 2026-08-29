@@ -250,8 +250,9 @@ export function useChat(account) {
         )
       }
 
+      let finalText = null
       try {
-        await streamAssistantReply({
+        finalText = await streamAssistantReply({
           messages: messagesForApi,
           specialtyId,
           lang,
@@ -267,6 +268,25 @@ export function useChat(account) {
           appendToken(lang === 'en' ? '\n\n_An error occurred while fetching the response. Please try again._' : '\n\n_Đã xảy ra lỗi khi lấy phản hồi. Vui lòng thử lại._')
         }
       } finally {
+        // Authoritative final content: the streamed tokens are stripped of
+        // control markers, but the returned full text keeps them
+        // (__NUTRITION_DATA__, __MEMORIES_USED__, [SymptomChecklist]) so
+        // MessageBubble can parse and render the rich blocks after streaming.
+        if (typeof finalText === 'string' && finalText.length > 0) {
+          const withFinal = conversationsRef.current.map((c) =>
+            c.id === convId
+              ? {
+                  ...c,
+                  messages: c.messages.map((m) =>
+                    m.id === assistantId ? { ...m, content: finalText } : m,
+                  ),
+                }
+              : c,
+          )
+          setConversations(withFinal)
+          conversationsRef.current = withFinal
+        }
+
         // Stream is over — safe to compute the final array outside an updater.
         const updated = conversationsRef.current.map((c) =>
           c.id === convId

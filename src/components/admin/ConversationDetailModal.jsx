@@ -1,5 +1,13 @@
 import { UrgencyBadge } from './UrgencyBadge.jsx'
 
+// Control markers (nutrition card JSON, memories, checklist) are machine data —
+// show a short label instead of the raw payload in the audit timeline.
+function displayContent(content) {
+  if (typeof content !== 'string') return content
+  const stripped = content.replace(/__NUTRITION_DATA__:[\s\S]*/g, '').trim()
+  return stripped || '[Thẻ dữ liệu dinh dưỡng]'
+}
+
 // Modal xem chi tiết hội thoại: timeline tin nhắn + gắn cờ review + xuất audit.
 export default function ConversationDetailModal({
   conversation,
@@ -44,7 +52,7 @@ export default function ConversationDetailModal({
                   <strong>{m.role === 'user' ? 'Người bệnh (User)' : 'Bác sĩ ảo MedChat247'}</strong>
                   <span className="text-xs text-muted">{new Date(m.createdAt || conversation.createdAt).toLocaleString('vi-VN')}</span>
                 </div>
-                <div className="bubble-text-content">{m.content}</div>
+                <div className="bubble-text-content">{displayContent(m.content)}</div>
               </div>
             ))}
           </div>

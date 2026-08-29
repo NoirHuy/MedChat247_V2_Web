@@ -21,10 +21,13 @@ import { runMemoryExtractionPass } from '../services/memory/memoryExtractor.js'
 const router = Router()
 const MAX_MESSAGES = 40
 const MAX_MESSAGE_LENGTH = 6000
-const MAX_CONVERSATION_CHARACTERS = 24000
+export const MAX_CONVERSATION_CHARACTERS = 24000
+// Nutrition assistant messages embed the __NUTRITION_DATA__ card JSON
+// (~2-4 KB per turn) so the stored conversation needs a larger ceiling.
+const MAX_NUTRITION_CONVERSATION_CHARACTERS = 96000
 const MAX_OUTPUT_TOKENS = 2500
 
-export function validateMessages(messages) {
+export function validateMessages(messages, maxChars = MAX_CONVERSATION_CHARACTERS) {
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new HttpError(400, 'Missing conversation messages.')
   }
@@ -42,7 +45,7 @@ export function validateMessages(messages) {
     }
     totalLength += message.content.length
   }
-  if (totalLength > MAX_CONVERSATION_CHARACTERS) {
+  if (totalLength > maxChars) {
     throw new HttpError(400, 'Conversation content exceeds the allowed limit.')
   }
 }
@@ -87,8 +90,6 @@ router.post(
   memberChatLimiter,
   asyncHandler(async (req, res) => {
     const { messages, specialtyId, lang, isSuggestionDemo, suggestionId, sessionMemoryPaused, conversationId, conditions } = req.body ?? {}
-    // validateMessages đã bao phủ kiểm tra mảng rỗng / định dạng / giới hạn độ dài.
-    validateMessages(messages)
     if (typeof specialtyId !== 'string' || !specialtyId) {
       throw new HttpError(400, 'Thiếu specialtyId.')
     }
@@ -96,8 +97,21 @@ router.post(
     const nutritionConditions = Array.isArray(conditions)
       ? conditions.filter((c) => typeof c === 'string' && c.trim()).slice(0, 10).map((c) => c.trim())
       : []
+    // Nutrition history carries __NUTRITION_DATA__ card JSON in assistant
+    // messages — strip it for the chat call so long conversations don't trip
+    // the size limit (the Flask engine only reads the last user message).
+    const isNutritionChat = specialtyId === 'nutrition_consultation' && Array.isArray(messages)
+    const chatMessages = isNutritionChat
+      ? messages.map((m) =>
+          m.role === 'assistant' && typeof m.content === 'string' && m.content.includes('__NUTRITION_DATA__:')
+            ? { ...m, content: stripNutritionMarker(m.content) || '[Thẻ dữ liệu dinh dưỡng]' }
+            : m,
+        )
+      : messages
+    // validateMessages đã bao phủ kiểm tra mảng rỗng / định dạng / giới hạn độ dài.
+    validateMessages(chatMessages)
 
-    const quotaReservation = await reserveChatQuota(req.userId, messages)
+    const quotaReservation = await reserveChatQuota(req.userId, chatMessages)
 
     const controller = new AbortController()
     res.on('close', () => {
@@ -128,7 +142,7 @@ router.post(
     const start = performance.now()
     try {
       const replyRes = await generateReply({
-        messages,
+        messages: chatMessages,
         specialtyId,
         lang: lang || 'vi',
         isSuggestionDemo: !!isSuggestionDemo,
@@ -155,7 +169,7 @@ router.post(
 
       const durationMs = Math.round(performance.now() - start)
       
-      const messagesText = messages.reduce((acc, m) => acc + (m.content || ''), '')
+      const messagesText = chatMessages.reduce((acc, m) => acc + (m.content || ''), '')
       const inputTokens = quotaReservation?.inputTokens ?? estimateTokens(messagesText) + 3200
       const outputTokens = estimateTokens(full)
       const totalTokens = inputTokens + outputTokens
@@ -202,7 +216,7 @@ router.post(
     }
 
     if (req.userId) {
-      const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
+      const lastUserMessage = [...chatMessages].reverse().find((m) => m.role === 'user')
       const tokens = quotaReservation
         ? quotaReservation.inputTokens + estimateTokens(full)
         : estimateTokens(lastUserMessage?.content ?? '') + estimateTokens(full)
@@ -223,7 +237,7 @@ router.post(
             await runMemoryExtractionPass({
               userId: req.userId,
               conversationId: conversationId || randomUUID(),
-              messages: [...messages, { role: 'assistant', content: assistantContentForMemory }],
+              messages: [...chatMessages, { role: 'assistant', content: assistantContentForMemory }],
             })
           } catch (passErr) {
             console.error('[Background Memory Extraction] Error (isolated):', passErr)
@@ -260,7 +274,14 @@ router.post(
       throw new HttpError(400, 'Thiếu thông tin hội thoại.')
     }
 
-    validateMessages(messages)
+    // Nutrition conversations embed nutrition-card JSON in assistant messages
+    // (needed to re-render NutritionCard on reload) → larger storage ceiling.
+    validateMessages(
+      messages,
+      specialtyId === 'nutrition_consultation'
+        ? MAX_NUTRITION_CONVERSATION_CHARACTERS
+        : MAX_CONVERSATION_CHARACTERS,
+    )
 
     const existing = await ConversationModel.findOne({ id }).select({ userId: 1 }).lean()
     if (existing && existing.userId !== req.userId) {

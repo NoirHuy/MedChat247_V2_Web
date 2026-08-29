@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY src ./src
+# Engine tư vấn đọc CSV từ data/processed (NutritionConsultant khởi tạo lúc import)
+COPY data/processed ./data/processed
 
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
