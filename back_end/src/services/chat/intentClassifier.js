@@ -20,11 +20,10 @@ const QUICK_SUBTYPE_PATTERNS = [
   {
     subtype: 'greeting',
     patterns: [
-      /^hi[.!]?\s*$/i,
-      /^hello[.!]?\s*$/i,
-      /^hey[.!]?\s*$/i,
-      /^chào[.!]?\s*$/i,
-      /^xin chào[.!]?\s*$/i,
+      /^hi(\s+(bạn|bot|bác sĩ|bs|doctor|there|all|mọi người))?[.!]?\s*$/i,
+      /^hello(\s+(bạn|bot|bác sĩ|bs|doctor|there|all|mọi người))?[.!]?\s*$/i,
+      /^hey(\s+(bạn|bot|bác sĩ|bs|there))?[.!]?\s*$/i,
+      /^(xin\s+)?chào(\s+(bạn|bot|bác sĩ|bs|em|anh|chị|ad|admin|mọi người|nhé|nha))?[.!]?\s*$/i,
       /^namaste[.!]?\s*$/i,
       /^halo[.!]?\s*$/i,
       /^good morning[.!]?\s*$/i,
@@ -38,7 +37,7 @@ const QUICK_SUBTYPE_PATTERNS = [
       /^cảm ơn/i,
       /^cám ơn/i,
       /^thank you/i,
-      /^thanks[.!]?\s*$/i,
+      /^thanks/i,
       /^thank\b/i,
     ],
   },
@@ -46,8 +45,8 @@ const QUICK_SUBTYPE_PATTERNS = [
     subtype: 'farewell',
     patterns: [
       /^tạm biệt/i,
-      /^goodbye[.!]?\s*$/i,
-      /^bye[.!]?\s*$/i,
+      /^goodbye/i,
+      /^bye/i,
       /^see you/i,
       /^hẹn gặp lại/i,
     ],
@@ -55,32 +54,35 @@ const QUICK_SUBTYPE_PATTERNS = [
   {
     subtype: 'bot_identity',
     patterns: [
+      /^(bạn|em|cậu|mày|ai|bot|bác sĩ|ad)\s+là\s+(ai|gì)/i,
       /^bạn là ai/i,
       /^who are you/i,
       /^what are you/i,
       /^what can you do/i,
-      /^tell me about this/i,
-      /^giới thiệu.*medchat/i,
+      /^tell me about (this|yourself)/i,
+      /^(giới thiệu|thông tin về)\s+.*medchat/i,
       /^medchat là gì/i,
-      /^bạn là model gì/i,
-      /^bạn là mô hình gì/i,
-      /^bạn dùng model gì/i,
-      /^bạn dùng mô hình gì/i,
-      /^model gì/i,
-      /^mô hình gì/i,
-      /^what model are you/i,
-      /^which model/i,
-      /^who created you/i,
-      /^who made you/i,
-      /^ai tạo ra bạn/i,
-      /^ai phát triển bạn/i,
-      /^bạn là chatgpt/i,
-      /^bạn là claude/i,
-      /^bạn là openai/i,
-      /^are you chatgpt/i,
-      /^are you claude/i,
+      /^(bạn|em|cậu|mày)\s+(dùng|chạy|là|dựa trên|sử dụng)?\s*(mô hình|model|llm|công nghệ)\s*gì/i,
+      /^(model|mô hình|llm)\s+gì/i,
+      /^what (model|llm) (are you|is this|do you use)/i,
+      /^which (model|llm)/i,
+      /^(who|ai)\s+(created|made|trained|developed|tạo ra|phát triển|huấn luyện|lập trình)\s+(you|bạn|ra bạn)/i,
+      /^(bạn|em|cậu)\s+(có phải|là)\s+(chatgpt|claude|openai|qwen|gemini|deepseek|llama|gpt)/i,
+      /^are you (chatgpt|claude|openai|qwen|gemini|deepseek|llama|gpt)/i,
+      /^bạn là (chatgpt|claude|openai|qwen|gemini|deepseek|llama|gpt)/i,
     ],
   },
+]
+
+/**
+ * Off-topic triggers (programming, math, crypto, politics) that must never
+ * be falsely accepted via clinical keywords.
+ */
+const OFF_TOPIC_TRIGGERS = [
+  'viết code', 'viết mã', 'python', 'javascript', 'html', 'css', 'c++', 'java', 'sql',
+  'thuật toán', 'lập trình', 'giải toán', 'tính tích phân', 'phương trình', 'dãy số',
+  'fibonacci', 'bitcoin', 'crypto', 'chứng khoán', 'bầu cử', 'viết thơ', 'dịch thơ',
+  'write code', 'solve math', 'calculate equation', 'blockchain',
 ]
 
 /**
@@ -90,7 +92,7 @@ const QUICK_SUBTYPE_PATTERNS = [
 const SYMPTOM_KEYWORDS_VI = [
   'đau', 'sốt', 'ho', 'khó thở', 'chóng mặt', 'buồn nôn', 'nôn',
   'tiêu chảy', 'táo bón', 'đau đầu', 'đau bụng', 'nghẹt mũi',
-  'mệt mỏi', 'phát ban', 'sưng', 'chảy máu', 'bị ', 'bị bệnh',
+  'mệt mỏi', 'phát ban', 'sưng', 'chảy máu', 'bị bệnh',
   'ngứa', 'chảy dịch', 'nổi mẩn', 'đau họng', 'khó nuốt', 'ói',
   'đau ngực', 'đau lưng', 'chướng bụng', 'chán ăn',
   'sụt cân', 'mất ngủ', 'lo âu', 'đau cơ', 'đau khớp',
@@ -206,6 +208,14 @@ export function classifyQuickSubtype(text) {
   return null
 }
 
+function matchKeyword(text, keyword) {
+  const trimmed = (keyword || '').trim()
+  if (!trimmed) return false
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(?:^|[^a-zà-ỹ0-9_])${escaped}(?:[^a-zà-ỹ0-9_]|$)`, 'i')
+  return regex.test(text || '')
+}
+
 /**
  * Checks whether the text contains any symptom-related keywords.
  * @param {string} text
@@ -213,9 +223,8 @@ export function classifyQuickSubtype(text) {
  * @returns {boolean}
  */
 function hasSymptomKeywords(text, lang) {
-  const lower = (text || '').toLowerCase()
   const keywords = lang === 'en' ? SYMPTOM_KEYWORDS_EN : SYMPTOM_KEYWORDS_VI
-  return keywords.some((kw) => lower.includes(kw))
+  return keywords.some((kw) => matchKeyword(text, kw))
 }
 
 /**
@@ -225,9 +234,8 @@ function hasSymptomKeywords(text, lang) {
  * @returns {boolean}
  */
 function hasGeneralMedicalKeywords(text, lang) {
-  const lower = (text || '').toLowerCase()
   const keywords = lang === 'en' ? GENERAL_MEDICAL_KEYWORDS_EN : GENERAL_MEDICAL_KEYWORDS_VI
-  return keywords.some((kw) => lower.includes(kw))
+  return keywords.some((kw) => matchKeyword(text, kw))
 }
 
 /**
@@ -361,6 +369,7 @@ export async function detectGeneralConsultationIntent(text, lang = 'vi') {
   }
 
   const trimmed = text.trim()
+  const lower = trimmed.toLowerCase()
 
   // 1. Quick-response patterns (greeting, thanks, farewell, bot_identity)
   const subtype = classifyQuickSubtype(trimmed)
@@ -368,12 +377,18 @@ export async function detectGeneralConsultationIntent(text, lang = 'vi') {
     return { type: 'quick', subtype, confidence: 1.0 }
   }
 
-  // 2. General medical keyword heuristic
+  // 2. If message contains explicit non-medical / coding / math triggers, block via refusal
+  const hasOffTopicTrigger = OFF_TOPIC_TRIGGERS.some((trigger) => lower.includes(trigger))
+  if (hasOffTopicTrigger) {
+    return { type: 'refusal', confidence: 0.95 }
+  }
+
+  // 3. General medical keyword heuristic
   if (hasGeneralMedicalKeywords(trimmed, lang)) {
     return { type: 'medical_query', confidence: 0.9 }
   }
 
-  // 3. LLM classification for out-of-scope non-medical queries
+  // 4. LLM classification for out-of-scope non-medical queries
   const llmResult = await llmClassifyGeneral(trimmed, lang)
   return { type: llmResult, confidence: 0.8 }
 }

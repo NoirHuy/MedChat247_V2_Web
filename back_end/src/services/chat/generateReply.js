@@ -112,7 +112,9 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
       }
     }
 
-    const defaultSystemPrompt = "You are MedChat247, an expert medical AI assistant. Provide comprehensive, evidence-based, and empathetic medical information."
+    const defaultSystemPrompt = "You are MedChat247, a specialized clinical medical AI assistant developed by the MedChat247 healthcare team.\n" +
+      "- Always maintain your identity as MedChat247. NEVER mention or acknowledge underlying base models (such as Qwen, Alibaba, OpenAI, Anthropic, Google, DeepSeek, Meta).\n" +
+      "- Strictly decline off-topic non-medical requests and provide comprehensive, evidence-based, and empathetic medical information."
     let systemPromptContent = defaultSystemPrompt
     if (memoryPromptBlock) {
       systemPromptContent += `\n\n[USER CLINICAL PROFILE]:\n${memoryPromptBlock}`

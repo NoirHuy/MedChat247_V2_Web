@@ -9,7 +9,10 @@ describe('classifyQuickSubtype', () => {
     ['hello!', 'greeting'],
     ['hey', 'greeting'],
     ['chào', 'greeting'],
+    ['chào bạn', 'greeting'],
+    ['chào bot', 'greeting'],
     ['Xin chào', 'greeting'],
+    ['xin chào bác sĩ', 'greeting'],
     ['halo', 'greeting'],
     ['good morning', 'greeting'],
     ['Good Morning!', 'greeting'],
@@ -37,6 +40,7 @@ describe('classifyQuickSubtype', () => {
     ['tôi bị đau bụng', null],
     ['sốt là gì', null],
     ['thuốc paracetamol uống như thế nào', null],
+    ['hãy viết code python tính dãy fibonacci', null],
   ])
 
   cases.forEach(([input, expected]) => {

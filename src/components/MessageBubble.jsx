@@ -85,7 +85,9 @@ export default memo(function MessageBubble({ role, content, streaming, lang = 'v
 
           {memoriesUsed && memoriesUsed.length > 0 && !streaming && (
             <div className="memory-referenced-badge">
-              🧠 Đã tham khảo hồ sơ trí nhớ cá nhân của bạn ({memoriesUsed.length} mục)
+              {isEn
+                ? `🧠 Referenced your personal clinical profile (${memoriesUsed.length} item${memoriesUsed.length > 1 ? 's' : ''})`
+                : `🧠 Đã tham khảo hồ sơ trí nhớ cá nhân của bạn (${memoriesUsed.length} mục)`}
             </div>
           )}
 

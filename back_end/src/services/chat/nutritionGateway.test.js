@@ -90,7 +90,7 @@ describe('nutritionGateway', () => {
     })
     const chunks = []
     const res = await streamNutritionReply({
-      messages: [{ role: 'user', content: 'chào bạn' }],
+      messages: [{ role: 'user', content: 'tư vấn giúp tôi món phở bò' }],
       conditions: [],
       onChunk: (c) => chunks.push(c),
     })
