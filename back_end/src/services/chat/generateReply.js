@@ -44,6 +44,7 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   const isEn = lang === 'en'
   const isGuest = !userId
   const performanceMeta = {}
+  const lastUserText = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
 
   const measureStage = async (name, operation) => {
     const startedAt = performance.now()
@@ -64,36 +65,6 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
       streamNutritionReply({ messages, conditions, conditionsSource, conversationId, onChunk, signal }),
     )
   }
-
-  // 1. Static suggestions only for logged-in users
-  const staticSuggestionReply = (!isGuest && specialtyId === 'health_consultation')
-    ? getStaticSuggestionReply(suggestionId, lang)
-    : null
-  if (staticSuggestionReply) {
-    const fullReplyText = await streamText(staticSuggestionReply, onChunk, signal, {
-      thinkingDelayMs: 600,
-      tokenDelayMs: 15,
-    })
-    return { fullReplyText, memoriesUsed: [], performanceMeta: { staticSuggestionReply: true } }
-  }
-
-  // ── INTENT-BASED ROUTING ──────────────────────────────────────────────────────
-  const lastUserText = [...messages].reverse().find(m => m.role === 'user')?.content || ''
-  const intent = await detectIntent(lastUserText, lang)
-
-  // Fast path: quick responses (no LLM, no GraphRAG)
-  if (intent.type === 'quick') {
-    const fullReplyText = await streamQuickReply(lang, intent.subtype, onChunk, signal)
-    return { fullReplyText, memoriesUsed: [], performanceMeta: { intent: 'quick', subtype: intent.subtype } }
-  }
-
-  // Out-of-scope: refusal (no LLM, no GraphRAG)
-  if (intent.type === 'refusal') {
-    const fullReplyText = await streamRefusalReply(lang, onChunk, signal)
-    return { fullReplyText, memoriesUsed: [], performanceMeta: { intent: 'refusal' } }
-  }
-  // SYMPTOM_QUERY: fall through to existing pipeline below
-  // ─────────────────────────────────────────────────────────────────────────────
 
   // ── GENERAL CONSULTATION SPECIALTY: custom fine-tuned model (Modal vLLM) ─────
   if (specialtyId === 'general_consultation' || specialtyId === 'general') {
@@ -176,6 +147,35 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
       }
     }
   }
+
+  // 1. Static suggestions only for logged-in users (Health Consultation)
+  const staticSuggestionReply = (!isGuest && specialtyId === 'health_consultation')
+    ? getStaticSuggestionReply(suggestionId, lang)
+    : null
+  if (staticSuggestionReply) {
+    const fullReplyText = await streamText(staticSuggestionReply, onChunk, signal, {
+      thinkingDelayMs: 600,
+      tokenDelayMs: 15,
+    })
+    return { fullReplyText, memoriesUsed: [], performanceMeta: { staticSuggestionReply: true } }
+  }
+
+  // ── INTENT-BASED ROUTING (Health Consultation Symptom Screener) ───────────────
+  const intent = await detectIntent(lastUserText, lang)
+
+  // Fast path: quick responses (no LLM, no GraphRAG)
+  if (intent.type === 'quick') {
+    const fullReplyText = await streamQuickReply(lang, intent.subtype, onChunk, signal)
+    return { fullReplyText, memoriesUsed: [], performanceMeta: { intent: 'quick', subtype: intent.subtype } }
+  }
+
+  // Out-of-scope: refusal (no LLM, no GraphRAG)
+  if (intent.type === 'refusal') {
+    const fullReplyText = await streamRefusalReply(lang, onChunk, signal)
+    return { fullReplyText, memoriesUsed: [], performanceMeta: { intent: 'refusal' } }
+  }
+  // SYMPTOM_QUERY: fall through to existing pipeline below
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // No API Key: hard error in production; dev-only mock via flag
   if (!env.llmApiKey) {
