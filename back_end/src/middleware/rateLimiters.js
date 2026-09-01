@@ -16,21 +16,24 @@ function buildLimiter(options) {
 
 // ─── 1. AUTH RATE LIMITERS ──────────────────────────────────────────────────
 
-// Chống Brute-force dò mật khẩu: Tối đa 5 lần sai / 15 phút
+// Chống Brute-force dò mật khẩu: Tối đa 10 lần sai / 15 phút (bỏ qua nếu đăng nhập thành công)
 export const authSigninLimiter = buildLimiter({
   windowMs: 15 * 60 * 1000,
-  max: isDev ? 100 : 5,
+  max: isDev ? 100 : 10,
+  skipSuccessfulRequests: true,
+  validate: { xForwardedForHeader: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: createRateLimitMessage(
-    'Bạn đã nhập sai quá 5 lần. Để bảo vệ tài khoản, vui lòng thử lại sau 15 phút.'
+    'Bạn đã nhập sai mật khẩu nhiều lần. Để bảo vệ tài khoản, vui lòng thử lại sau ít phút.'
   ),
 })
 
-// Chống Spam tạo tài khoản rác: Tối đa 3 lần đăng ký / 1 giờ
+// Chống Spam tạo tài khoản rác: Tối đa 5 lần đăng ký / 1 giờ
 export const authSignupLimiter = buildLimiter({
   windowMs: 60 * 60 * 1000,
-  max: isDev ? 100 : 3,
+  max: isDev ? 100 : 5,
+  validate: { xForwardedForHeader: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: createRateLimitMessage(
@@ -38,19 +41,22 @@ export const authSignupLimiter = buildLimiter({
   ),
 })
 
-// Đăng nhập Google OAuth: Tối đa 10 lần / 15 phút
-// Gui va xac minh ma OTP email: giam spam email va brute-force ma 6 chu so.
+// Gửi và xác minh mã OTP email: giảm spam email và brute-force mã 6 chữ số
 export const authEmailCodeLimiter = buildLimiter({
   windowMs: 15 * 60 * 1000,
-  max: isDev ? 100 : 5,
+  max: isDev ? 100 : 10,
+  validate: { xForwardedForHeader: false },
   standardHeaders: true,
   legacyHeaders: false,
-  message: createRateLimitMessage('Ban da yeu cau hoac nhap ma qua nhieu lan. Vui long thu lai sau 15 phut.'),
+  message: createRateLimitMessage('Bạn đã yêu cầu hoặc nhập mã quá nhiều lần. Vui lòng thử lại sau 15 phút.'),
 })
 
+// Đăng nhập Google OAuth: Tối đa 30 lần / 15 phút (bỏ qua nếu đăng nhập thành công)
 export const authGoogleLimiter = buildLimiter({
   windowMs: 15 * 60 * 1000,
-  max: isDev ? 100 : 10,
+  max: isDev ? 100 : 30,
+  skipSuccessfulRequests: true,
+  validate: { xForwardedForHeader: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: createRateLimitMessage(

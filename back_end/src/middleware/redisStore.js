@@ -1,4 +1,4 @@
-import { isRedisConnected, safeIncr, safeTTL, getRedisClient } from '../config/redis.js'
+import { isRedisConnected, safeIncr, safeDecr, safeDel, safeTTL } from '../config/redis.js'
 
 const KEY_PREFIX = 'rl:'
 
@@ -56,18 +56,16 @@ export function createRedisStore(windowMs) {
     async decrement(key) {
       const entry = memoryHits.get(key)
       if (entry && entry.totalHits > 0) entry.totalHits -= 1
-      const client = getRedisClient()
-      try {
-        await client.decr(`${KEY_PREFIX}${key}`)
-      } catch {}
+      if (isRedisConnected()) {
+        await safeDecr(`${KEY_PREFIX}${key}`)
+      }
     },
 
     async resetKey(key) {
       memoryHits.delete(key)
-      const client = getRedisClient()
-      try {
-        await client.del(`${KEY_PREFIX}${key}`)
-      } catch {}
+      if (isRedisConnected()) {
+        await safeDel(`${KEY_PREFIX}${key}`)
+      }
     },
 
     async resetAll() {

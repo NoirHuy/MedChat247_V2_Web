@@ -246,6 +246,17 @@ export async function safeIncr(key, ttlSeconds = null) {
   }
 }
 
+export async function safeDecr(key) {
+  if (!isConnected) return null
+  try {
+    return await client.decr(key)
+  } catch (err) {
+    metrics.errors++
+    auditLog('REDIS', 'Warning', `DECR ${key} failed: ${err.message}`, 'warn')
+    return null
+  }
+}
+
 export async function safeTTL(key) {
   if (!isConnected) return -2
   try {
