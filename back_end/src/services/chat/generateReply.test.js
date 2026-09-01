@@ -242,4 +242,33 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
     expect(res.performanceMeta.isGuest).toBe(true)
     expect(res.fullReplyText).toContain(GUEST_CTA.vi)
   })
+
+  it('injects personal memory context for general_consultation logged-in user', async () => {
+    const chunks = []
+    const res = await generateReply({
+      messages: [{ role: 'user', content: 'Tôi bị đau dạ dày thì dùng thuốc gì?' }],
+      specialtyId: 'general_consultation',
+      lang: 'vi',
+      userId: 'user-123',
+      sessionMemoryPaused: false,
+      onChunk: (c) => chunks.push(c),
+    })
+
+    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.performanceMeta.specialty).toBe('general_consultation')
+  })
+
+  it('routes specialtyId="general" alias identically to general_consultation', async () => {
+    const chunks = []
+    const res = await generateReply({
+      messages: [{ role: 'user', content: 'Tôi cần tư vấn tổng quát' }],
+      specialtyId: 'general',
+      lang: 'vi',
+      userId: 'user-123',
+      onChunk: (c) => chunks.push(c),
+    })
+
+    expect(res.performanceMeta.specialty).toBe('general_consultation')
+    expect(res.performanceMeta.fineTuned).toBe(true)
+  })
 })

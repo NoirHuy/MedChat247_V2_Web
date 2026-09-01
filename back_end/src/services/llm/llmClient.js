@@ -31,7 +31,12 @@ export async function callLLM({
   apiKey = null,
 }) {
   const modelName = model || env.openrouterModel
-  const effectiveSignal = signal || (timeoutMs ? AbortSignal.timeout(timeoutMs) : null)
+
+  const signals = []
+  if (signal) signals.push(signal)
+  if (timeoutMs) signals.push(AbortSignal.timeout(timeoutMs))
+  const effectiveSignal = signals.length > 1 ? AbortSignal.any(signals) : (signals[0] || null)
+
   const targetBaseUrl = (baseUrl || env.llmBaseUrl).replace(/\/+$/, '')
   const targetApiKey = apiKey || env.llmApiKey
 
@@ -72,28 +77,33 @@ export async function callLLM({
     let fullReply = ''
     let buffer = ''
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop()
-      for (const line of lines) {
-        const clean = line.trim()
-        if (!clean || clean === 'data: [DONE]') continue
-        if (clean.startsWith('data: ')) {
-          try {
-            const parsed = JSON.parse(clean.slice(6))
-            const content = parsed.choices?.[0]?.delta?.content ?? ''
-            if (content) {
-              fullReply += content
-              onChunk?.(content)
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop()
+        for (const line of lines) {
+          const clean = line.trim()
+          if (!clean || clean === 'data: [DONE]') continue
+          const match = clean.match(/^data:\s*(.+)$/)
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[1])
+              const content = parsed.choices?.[0]?.delta?.content ?? ''
+              if (content) {
+                fullReply += content
+                onChunk?.(content)
+              }
+            } catch {
+              /* ignore incomplete stream lines */
             }
-          } catch {
-            /* ignore incomplete stream lines */
           }
         }
       }
+    } finally {
+      reader.releaseLock()
     }
     return fullReply
   } else {
@@ -176,6 +186,14 @@ export async function callFinetunedLLM({
   const baseUrl = env.finetuneLlmBaseUrl || 'https://huyphuhunghuyfb--medchat247-backend-serve-vllm.modal.run/v1'
   const apiKey = env.finetuneLlmApiKey || 'medchat247-secret-key-2026'
 
+  let chunksEmitted = 0
+  const trackingOnChunk = onChunk
+    ? (chunk) => {
+        chunksEmitted++
+        onChunk(chunk)
+      }
+    : null
+
   try {
     auditLog('FINE_TUNED_LLM', 'Info', `Calling Modal vLLM fine-tuned model "qwen25-med" at ${baseUrl}`)
     return await callLLM({
@@ -187,10 +205,21 @@ export async function callFinetunedLLM({
       timeoutMs,
       baseUrl,
       apiKey,
-      onChunk,
+      onChunk: trackingOnChunk,
       signal,
     })
   } catch (err) {
+    // If client aborted (e.g. Stop button), do not trigger fallback
+    if (signal?.aborted || err.name === 'AbortError') {
+      throw err
+    }
+
+    // If chunks were already partially emitted to client, do not silently restart from beginning
+    if (chunksEmitted > 0) {
+      auditLog('FINE_TUNED_LLM', 'Error', `Modal vLLM stream interrupted after ${chunksEmitted} chunks. Cannot failover cleanly.`, 'error')
+      throw err
+    }
+
     const isTimeout = err.name === 'TimeoutError' || err.message?.includes('aborted') || err.message?.includes('Timeout')
     auditLog(
       'FINE_TUNED_LLM',
@@ -199,7 +228,7 @@ export async function callFinetunedLLM({
       'warn'
     )
 
-    // Defensive fallback to primary chat model if Modal is cold-starting or unreachable
+    // Defensive fallback to primary chat model
     return await callLLM({
       messages,
       model: fallbackModel || env.openrouterModelChat,
