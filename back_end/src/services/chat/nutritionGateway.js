@@ -37,7 +37,21 @@ function extractLlmNote(rawReply) {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 15 && !/^(Chào|Hello|Rất vui|Xin chào|Với tư cách)/i.test(s))
-  return sentences.slice(0, 2).join(' ').trim() || raw.slice(0, 180)
+    // Câu hỏi tu từ ("Tại sao cần thận trọng?") không có ý nghĩa khi đứng
+    // một mình trong ghi chú ngắn trên card.
+    .filter((s) => !s.endsWith('?'))
+    // Heading / nhãn mục viết hoa bị cắt dở hoặc câu sáo rỗng dẫn nhập.
+    .filter((s) => !/^(ĐỀ XUẤT|LỜI KHUYÊN|PHÂN TÍCH|HƯỚNG DẪN|KẾT LUẬN)/.test(s))
+    .filter((s) => !/^(Dưới đây|Hãy cùng|Chúng ta hãy|Chúng ta cùng)/i.test(s))
+    // Cụm viết hoa toàn bộ là heading của markdown đã bị stripped dở
+    // (kiểm tra "không có chữ thường" thay vì match uppercase — range
+    // unicode [A-ZÀ-Ỹ] bao luôn cả chữ thường tiếng Việt).
+    .filter((s) => !(s.length >= 12 && !/[a-zà-ỹ]/.test(s)))
+  const note = sentences.slice(0, 2).join(' ').trim()
+  if (!note) return raw.slice(0, 180).trim()
+  if (note.length <= 220) return note
+  // Cắt đúng biên từ, không đứt giữa chữ
+  return `${note.slice(0, 220).replace(/\s+\S*$/, '')}…`
 }
 
 export function stripNutritionMarker(text) {

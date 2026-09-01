@@ -253,10 +253,17 @@ class FoodMatcher:
             for i in range(len(words) - n + 1):
                 phrases.append(" ".join(words[i:i + n]))
 
+        multi_token_query = len(words) > 1
         for phrase in phrases:
             # Nếu là từ đơn, bắt buộc phải nằm trong danh sách VALID_SINGLE_FOODS
-            if len(phrase.split()) == 1 and phrase not in VALID_SINGLE_FOODS:
-                continue
+            if len(phrase.split()) == 1:
+                if phrase not in VALID_SINGLE_FOODS:
+                    continue
+                # Query nhiều từ KHÔNG được fallback về match 1 token đơn lẻ
+                # ("Cơm tấm sườn" → "Cơm hến" là card sai hoàn toàn). Trả về None
+                # để LLM trả lời chung thay vì gắn card sai dữ liệu.
+                if multi_token_query:
+                    continue
             if len(phrase) < 3:
                 continue
 

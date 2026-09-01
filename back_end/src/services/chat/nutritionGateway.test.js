@@ -219,6 +219,56 @@ describe('nutritionGateway', () => {
     expect(thirdBody.conditions).toEqual([])
   })
 
+  it('llm_note skips rhetorical questions, headings and filler lines', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        reply_text: [
+          '**1. Tại sao cần kiểm soát khẩu phần?**',
+          'Món thịt bò xào nấm cung cấp đạm cao (22.5g). Người Gout nên kiểm soát khẩu phần để ổn định acid uric.',
+          '',
+          '**DƯỚI ĐÂY LÀ PHÂN TÍCH CHI TIẾT**',
+          'Dưới đây là những lưu ý quan trọng:',
+          'LỜI KHUYÊN QUAN TRỌNG NHẤT LÀ KIỂM SOÁT KHẨU PHẦN HẰNG NGÀY',
+        ].join('\n'),
+        structured_data: { food_name: 'Thịt bò xào nấm' },
+      }),
+    })
+    const res = await streamNutritionReply({
+      messages: [{ role: 'user', content: 'gout ăn thịt bò xào nấm được không?' }],
+      conditions: ['GOUT'],
+    })
+
+    const json = JSON.parse(res.fullReplyText.slice('__NUTRITION_DATA__:'.length))
+    expect(json.llm_note).toBe(
+      'Món thịt bò xào nấm cung cấp đạm cao (22.5g). Người Gout nên kiểm soát khẩu phần để ổn định acid uric.',
+    )
+    expect(json.llm_note).not.toContain('?')
+    expect(json.llm_note).not.toMatch(/ĐỀ XUẤT|DƯỚI ĐÂY|LỜI KHUYÊN/)
+  })
+
+  it('llm_note cuts at a word boundary with ellipsis when too long', async () => {
+    const s1 =
+      'Món ăn này rất giàu dinh dưỡng nhưng cũng chứa hàm lượng đạm và natri cao đáng kể trong mỗi khẩu phần tiêu thụ hàng ngày. '
+    const s2 =
+      'Người mắc bệnh mạn tính cần cân nhắc kỹ số lượng tiêu thụ để tránh làm tăng gánh nặng chuyển hóa cho cơ thể một cách không cần thiết. '
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        reply_text: s1 + s2 + 'Câu thứ ba ngắn gọn.',
+        structured_data: { food_name: 'X' },
+      }),
+    })
+    const res = await streamNutritionReply({
+      messages: [{ role: 'user', content: 'món x' }],
+      conditions: [],
+    })
+
+    const json = JSON.parse(res.fullReplyText.slice('__NUTRITION_DATA__:'.length))
+    expect(json.llm_note.length).toBeLessThanOrEqual(221)
+    expect(json.llm_note.endsWith('…')).toBe(true)
+  })
+
   it('merges cached conditions with request conditions without duplicates', async () => {
     fetchMock
       .mockResolvedValueOnce({
