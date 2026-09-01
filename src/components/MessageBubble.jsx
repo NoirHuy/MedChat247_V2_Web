@@ -77,7 +77,11 @@ export default memo(function MessageBubble({ role, content, streaming, lang = 'v
           {nutritionData ? (
             <NutritionCard data={nutritionData} lang={lang} onSend={onSend} />
           ) : cleanContent ? (
-            renderMessageContent(cleanContent)
+            isUser ? (
+              <p className="msg-user-content">{renderInline(cleanContent, 'user-msg')}</p>
+            ) : (
+              renderMessageContent(cleanContent)
+            )
           ) : streaming ? (
             <TypingDots />
           ) : null}
@@ -375,27 +379,25 @@ function renderBlock(block, key) {
               )
             }
 
-            // 2. Dòng chi tiết (Dẫn chứng, Lý giải phân biệt, Dấu hiệu cần chú ý, Khuyến nghị...) - Song ngữ
-            const hasIconPrefix = /^[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*(📋|🔍|⚠️|🩺|💊|📌|[-*•])/.test(trimmed)
-            const cleanBullet = trimmed
-              .replace(/^[-*•]\s*/, '')
-              .replace(/^[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*(📋|🔍|⚠️|🩺|💊|📌)[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*/g, '')
-              .replace(/^[\uFFFD\uFE0F\uFE0E\u200B\u00A0]+/, '')
-              .trim()
-            const lowerContent = cleanBullet.toLowerCase()
-            const isEvidence = lowerContent.includes('dẫn chứng') || lowerContent.includes('bằng chứng') || lowerContent.includes('evidence')
-            const isReasoning = lowerContent.includes('lý giải') || lowerContent.includes('differential') || lowerContent.includes('reasoning')
-            const isWatch = lowerContent.includes('dấu hiệu') || lowerContent.includes('cảnh báo') || lowerContent.includes('watch for') || lowerContent.includes('warning')
-            const isRecommendation = lowerContent.includes('xét nghiệm') || lowerContent.includes('khám') || lowerContent.includes('chuyên khoa') || lowerContent.includes('nghỉ ngơi') || lowerContent.includes('recommendation')
+            // 2. Dòng chi tiết (Chỉ khi thực sự có tiền tố gạch đầu dòng hoặc icon y tế tường minh)
+            const hasIconPrefix = /^[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*(📋|🔍|⚠️|🩺|💊|📌)/.test(trimmed)
+            const isBulletLine = /^[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*[-*•]\s+/.test(trimmed)
 
-            const isDetailLine = hasIconPrefix || isEvidence || isReasoning || isWatch || isRecommendation
+            if (hasIconPrefix || isBulletLine) {
+              const cleanBullet = trimmed
+                .replace(/^[-*•]\s*/, '')
+                .replace(/^[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*(📋|🔍|⚠️|🩺|💊|📌)[\uFFFD\uFE0F\uFE0E\u200B\u00A0\s]*/g, '')
+                .replace(/^[\uFFFD\uFE0F\uFE0E\u200B\u00A0]+/, '')
+                .trim()
+              const lowerContent = cleanBullet.toLowerCase()
+              const isEvidence = lowerContent.includes('dẫn chứng') || lowerContent.includes('bằng chứng') || lowerContent.includes('evidence')
+              const isReasoning = lowerContent.includes('lý giải') || lowerContent.includes('differential') || lowerContent.includes('reasoning')
+              const isWatch = lowerContent.includes('dấu hiệu') || lowerContent.includes('cảnh báo') || lowerContent.includes('watch for') || lowerContent.includes('warning')
 
-            // Nếu là dòng Dẫn chứng, Lý giải, Dấu hiệu, Khuyến nghị hoặc có gạch đầu dòng / icon
-            if (isDetailLine) {
               const isQuestion = cleanBullet.includes('?')
 
               // Nếu thực sự là câu hỏi lẻ ở Phase 1 (có dấu ?) -> Dùng Thẻ Question Card
-              if (isQuestion) {
+              if (isQuestion && hasIconPrefix) {
                 return (
                   <div key={i} className="msg-question-card">
                     <span className="msg-question-card__icon">❓</span>
@@ -406,20 +408,27 @@ function renderBlock(block, key) {
                 )
               }
 
-              // Ngược lại (Dẫn chứng, Lý giải, Dấu hiệu, Khuyến nghị) -> Dùng giao diện dòng chi tiết với icon y tế chuẩn
-              let icon = '📌'
-              if (trimmed.includes('📋') || isEvidence) icon = '📋'
-              else if (trimmed.includes('🔍') || isReasoning) icon = '🔍'
-              else if (trimmed.includes('⚠️') || isWatch) icon = '⚠️'
-              else if (trimmed.includes('🩺')) icon = '🩺'
-              else if (trimmed.includes('💊')) icon = '💊'
-              else if (trimmed.includes('📌')) icon = '📌'
-              else if (lowerContent.includes('xét nghiệm') || lowerContent.includes('khám') || lowerContent.includes('chuyên khoa')) icon = '🩺'
-              else if (lowerContent.includes('nghỉ ngơi') || lowerContent.includes('uống nước')) icon = '💊'
+              // Nếu có icon rõ ràng
+              if (hasIconPrefix) {
+                let icon = '•'
+                if (trimmed.includes('📋') || isEvidence) icon = '📋'
+                else if (trimmed.includes('🔍') || isReasoning) icon = '🔍'
+                else if (trimmed.includes('⚠️') || isWatch) icon = '⚠️'
+                else if (trimmed.includes('🩺')) icon = '🩺'
+                else if (trimmed.includes('💊')) icon = '💊'
 
+                return (
+                  <div key={i} className={`disease-detail-line ${isEvidence ? 'disease-detail-line--evidence' : ''}`}>
+                    <span className="bullet-dot">{icon}</span>
+                    <span className="detail-content">{renderInline(cleanBullet, `${key}-${i}`)}</span>
+                  </div>
+                )
+              }
+
+              // Dòng gạch đầu dòng chuẩn (-) hoặc (*)
               return (
-                <div key={i} className={`disease-detail-line ${isEvidence ? 'disease-detail-line--evidence' : ''}`}>
-                  <span className="bullet-dot">{icon}</span>
+                <div key={i} className="disease-detail-line">
+                  <span className="bullet-dot">•</span>
                   <span className="detail-content">{renderInline(cleanBullet, `${key}-${i}`)}</span>
                 </div>
               )
