@@ -94,6 +94,12 @@ _STOPWORD_PATTERNS = [
 _META_COMPILED = [re.compile(p, re.IGNORECASE) for p in META_PATTERNS]
 
 
+def is_meta_question(text: str) -> bool:
+    """True nếu câu là chào hỏi / câu hỏi meta / ngoài luồng (không nên resolve món từ history)."""
+    raw_lower = (text or "").lower().strip()
+    return any(pattern.search(raw_lower) for pattern in _META_COMPILED)
+
+
 def _boundary_pattern(text: str) -> re.Pattern[str]:
     """Regex khớp `text` trọn vẹn theo ranh giới từ (dùng ở cả 2 chiều tra cứu)."""
     return re.compile(r"(?i)(?:\b|^)" + re.escape(text) + r"(?:\b|$)")
@@ -272,6 +278,9 @@ def to_native(val: Any) -> Any:
     """Quy đổi numpy/pandas types sang native Python types (int, float, None)."""
     if pd.isna(val) or val is None:
         return None
+    # bool phải xử lý trước int (isinstance(True, int) == True trong Python)
+    if isinstance(val, (bool, np.bool_)):
+        return bool(val)
     if isinstance(val, (np.integer, int)):
         return int(val)
     if isinstance(val, (np.floating, float)):

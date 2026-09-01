@@ -238,7 +238,7 @@ export function useChat(account) {
           lang,
           isSuggestionDemo: !!suggestionId,
           suggestionId,
-          conversationId: specialtyId === DEFAULT_SPECIALTY_ID ? convId : undefined,
+          conversationId: convId,
           signal: controller.signal,
           onToken: appendToken,
         })

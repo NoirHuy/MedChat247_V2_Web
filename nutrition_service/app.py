@@ -116,12 +116,15 @@ def create_app(consultant: NutritionConsultant | None = None) -> Flask:
         data = request.get_json() or {}
         message = data.get("message", "").strip()
         conditions = data.get("conditions", [])
+        history = data.get("history") or []
 
         if not message:
             return jsonify({"error": "Vui lòng nhập tin nhắn hoặc tên món ăn."}), 400
 
         svc: NutritionConsultant = flask_app.config["CONSULTANT"]
-        return jsonify(svc.chat(user_message=message, active_conditions=conditions))
+        return jsonify(
+            svc.chat(user_message=message, active_conditions=conditions, history=history)
+        )
 
     return flask_app
 

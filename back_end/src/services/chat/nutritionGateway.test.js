@@ -22,12 +22,15 @@ import {
   streamNutritionReply,
   stripNutritionMarker,
   isNutritionSpecialty,
+  buildNutritionHistory,
+  resetNutritionConditionsCache,
 } from './nutritionGateway.js'
 
 describe('nutritionGateway', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchMock.mockReset()
+    resetNutritionConditionsCache()
   })
 
   it('detects the nutrition specialty id', () => {
@@ -62,6 +65,7 @@ describe('nutritionGateway', () => {
         body: JSON.stringify({
           message: 'Tiểu đường ăn chè thái được không?',
           conditions: ['DIABETES'],
+          history: [],
         }),
       }),
     )
@@ -125,5 +129,122 @@ describe('nutritionGateway', () => {
     expect(stripNutritionMarker('text __NUTRITION_DATA__:{"a":1}')).toBe('text')
     expect(stripNutritionMarker('plain text')).toBe('plain text')
     expect(stripNutritionMarker('')).toBe('')
+  })
+
+  it('buildNutritionHistory strips markers, excludes the last user turn and caps length', () => {
+    const messages = [
+      { role: 'user', content: 'Cơm tấm sườn bao nhiêu calo?' },
+      { role: 'assistant', content: 'Cơm tấm sườn có 480 kcal __NUTRITION_DATA__:{"food_name":"Cơm tấm sườn"}' },
+      { role: 'user', content: 'Vậy còn phở bò thì sao?' },
+    ]
+    const history = buildNutritionHistory(messages)
+    expect(history).toEqual([
+      { role: 'user', content: 'Cơm tấm sườn bao nhiêu calo?' },
+      { role: 'assistant', content: 'Cơm tấm sườn có 480 kcal' },
+    ])
+    expect(history.some((m) => m.content.includes('__NUTRITION_DATA__'))).toBe(false)
+    expect(buildNutritionHistory([])).toEqual([])
+    expect(buildNutritionHistory(undefined)).toEqual([])
+    // Marker-only assistant message falls back to a placeholder
+    expect(
+      buildNutritionHistory([
+        { role: 'assistant', content: '__NUTRITION_DATA__:{"a":1}' },
+        { role: 'user', content: 'tiếp' },
+      ]),
+    ).toEqual([{ role: 'assistant', content: '[Thẻ dữ liệu dinh dưỡng]' }])
+  })
+
+  it('forwards multi-turn history to the nutrition service', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ reply_text: 'ok', structured_data: { food_name: 'X' } }),
+    })
+    await streamNutritionReply({
+      messages: [
+        { role: 'user', content: 'Cơm tấm sườn bao nhiêu calo?' },
+        { role: 'assistant', content: 'Cơm tấm sườn có 480 kcal __NUTRITION_DATA__:{"food_name":"Cơm tấm sườn"}' },
+        { role: 'user', content: 'Vậy còn phở bò thì sao?' },
+      ],
+      conditions: [],
+      conversationId: 'conv-1',
+    })
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.message).toBe('Vậy còn phở bò thì sao?')
+    expect(body.history).toEqual([
+      { role: 'user', content: 'Cơm tấm sườn bao nhiêu calo?' },
+      { role: 'assistant', content: 'Cơm tấm sườn có 480 kcal' },
+    ])
+  })
+
+  it('caches detected conditions per conversation and merges them into later turns', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          reply_text: 'ok',
+          structured_data: { food_name: 'X' },
+          active_conditions: ['GOUT', 'DIABETES'],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ reply_text: 'ok', structured_data: { food_name: 'Y' } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ reply_text: 'ok', structured_data: { food_name: 'Z' } }),
+      })
+
+    await streamNutritionReply({
+      messages: [{ role: 'user', content: 'tôi bị gout và tiểu đường' }],
+      conditions: [],
+      conversationId: 'conv-1',
+    })
+
+    const secondBody = await streamNutritionReply({
+      messages: [{ role: 'user', content: 'còn món này thì sao?' }],
+      conditions: [],
+      conversationId: 'conv-1',
+    }).then(() => JSON.parse(fetchMock.mock.calls[1][1].body))
+    expect(secondBody.conditions).toEqual(['GOUT', 'DIABETES'])
+
+    // A different conversation must not inherit the cached conditions
+    await streamNutritionReply({
+      messages: [{ role: 'user', content: 'món gì tốt?' }],
+      conditions: [],
+      conversationId: 'conv-2',
+    })
+    const thirdBody = JSON.parse(fetchMock.mock.calls[2][1].body)
+    expect(thirdBody.conditions).toEqual([])
+  })
+
+  it('merges cached conditions with request conditions without duplicates', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          reply_text: 'ok',
+          structured_data: { food_name: 'X' },
+          active_conditions: ['DIABETES', 'GOUT'],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ reply_text: 'ok', structured_data: { food_name: 'X' } }),
+      })
+    // Prime the cache for conv-3
+    await streamNutritionReply({
+      messages: [{ role: 'user', content: 'tôi bị gout' }],
+      conditions: ['DIABETES'],
+      conversationId: 'conv-3',
+    })
+    await streamNutritionReply({
+      messages: [{ role: 'user', content: 'món gì?' }],
+      conditions: ['DIABETES'],
+      conversationId: 'conv-3',
+    })
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(body.conditions).toEqual(['DIABETES', 'GOUT'])
   })
 })

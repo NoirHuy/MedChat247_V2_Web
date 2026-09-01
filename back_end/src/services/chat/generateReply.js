@@ -60,7 +60,7 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   // skipped here (extraction still runs on the conversation afterwards).
   if (isNutritionSpecialty(specialtyId)) {
     return await measureStage('nutritionGatewayMs', () =>
-      streamNutritionReply({ messages, conditions, onChunk, signal }),
+      streamNutritionReply({ messages, conditions, conversationId, onChunk, signal }),
     )
   }
 

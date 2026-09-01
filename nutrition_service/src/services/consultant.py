@@ -8,22 +8,40 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from typing import Any
 
 import pandas as pd
 
 from src.clinical.rules import ChronicDiseaseEvaluator
-from src.core.constants import SafetyStatus
+from src.core.constants import MAX_CHAT_HISTORY_TURNS, SafetyStatus
 from src.services.food_matcher import (
     FoodMatcher,
     categorize_dish,
     clean_dict,
     extract_conditions_from_text,
+    is_meta_question,
     to_native,
 )
 from src.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
+
+# Câu hỏi nối tiếp về món đã nhắc ở lượt trước: chỉ fallback vào history khi
+# câu hiện tại mang dấu hiệu này — tránh "chào bạn"/"cảm ơn nhé!" bị gắn nhầm
+# món cũ và sinh card sai ngữ cảnh.
+_FOLLOWUP_CUE_RE = re.compile(
+    r"(còn\b|nó\b|món (đó|này|kia)|thực phẩm (đó|này)|lượng (đó|này)"
+    r"|khẩu phần (đó|này)|thì sao|vậy\b|nếu\b|bao nhiêu|tốt cho|xấu cho|hợp với|an toàn)"
+)
+
+
+def _is_food_followup(text: str) -> bool:
+    """Nhận diện câu hỏi nối tiếp về món đã hỏi ở lượt trước."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 200:
+        return False
+    return bool(_FOLLOWUP_CUE_RE.search(t))
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
@@ -237,16 +255,62 @@ class NutritionConsultant:
         """Tìm món ăn/nguyên liệu trong câu hỏi tự nhiên (ủy quyền cho FoodMatcher)."""
         return self.matcher.find_food_in_text(text)
 
-    def chat(self, user_message: str, active_conditions: list[str] | None = None) -> dict[str, Any]:
+    def _sanitize_history(self, history: Any) -> list[dict[str, str]]:
+        """Làm sạch history gửi từ Node gateway: chỉ giữ user/assistant, giới hạn số lượt."""
+        if not isinstance(history, list):
+            return []
+        sanitized: list[dict[str, str]] = []
+        for item in history:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            content = item.get("content")
+            if role not in ("user", "assistant") or not isinstance(content, str):
+                continue
+            content = content.strip()
+            if not content:
+                continue
+            sanitized.append({"role": role, "content": content[:2000]})
+        # Giữ tối đa MAX_CHAT_HISTORY_TURNS lượt (cặp user+assistant) tính từ cuối
+        return sanitized[-MAX_CHAT_HISTORY_TURNS * 2 :]
+
+    def _previous_food_from_history(self, history: list[dict[str, str]]) -> dict[str, str] | None:
+        """Tìm món ăn/nguyên liệu gần nhất user hỏi trong history (ưu tiên user, sau đó assistant)."""
+        for item in reversed(history):
+            if item["role"] != "user":
+                continue
+            matched = self.matcher.find_food_in_text(item["content"])
+            if matched:
+                return matched
+        return None
+
+    def chat(
+        self,
+        user_message: str,
+        active_conditions: list[str] | None = None,
+        history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Xử lý tin nhắn người dùng và trả về phản hồi chuẩn y khoa kết hợp Real LLM.
         Xử lý thông minh cả câu hỏi về món ăn lẫn câu hỏi ngoại lệ/tổng quát.
+
+        Multi-turn: khi câu hiện tại không nhắc món nào (vd "còn phở bò thì sao?"),
+        engine thử resolve món từ các lượt user trước trong `history` thay vì trả lời
+        ngoài luồng. History cũng được đưa vào prompt LLM để ngữ cảnh liền mạch.
         """
+        history = self._sanitize_history(history)
         detected_conditions = extract_conditions_from_text(user_message)
         # dict.fromkeys: khử trùng lặp nhưng GIỮ nguyên thứ tự ổn định (set bị xáo trộn do hash random)
         updated_conditions = list(dict.fromkeys((active_conditions or []) + detected_conditions))
 
         matched = self.matcher.find_food_in_text(user_message)
+        resolved_from_history = False
+
+        if not matched and not is_meta_question(user_message) and _is_food_followup(user_message):
+            # Câu hỏi nối tiếp không nhắc món mới ("còn phở bò thì sao?" sau câu
+            # hỏi về cơm tấm) → resolve món từ các lượt user trước trong history.
+            matched = self._previous_food_from_history(history)
+            resolved_from_history = matched is not None
 
         if not matched:
             # Khi người dùng chào hỏi, hỏi câu ngoài luồng, hoặc hỏi kiến thức dinh dưỡng chung chung
@@ -254,12 +318,14 @@ class NutritionConsultant:
                 user_message=user_message,
                 clinical_data=None,
                 conditions=updated_conditions,
+                chat_history=history,
             )
             return clean_dict({
                 "reply_text": reply_text,
                 "structured_data": None,
                 "active_conditions": updated_conditions,
                 "matched_food": None,
+                "resolved_from_history": False,
             })
 
         if matched["type"] == "dish":
@@ -292,6 +358,7 @@ class NutritionConsultant:
             user_message=user_message,
             clinical_data=clinical_context,
             conditions=updated_conditions,
+            chat_history=history,
         )
 
         return clean_dict({
@@ -299,6 +366,7 @@ class NutritionConsultant:
             "structured_data": report,
             "active_conditions": updated_conditions,
             "matched_food": food_title,
+            "resolved_from_history": resolved_from_history,
         })
 
 

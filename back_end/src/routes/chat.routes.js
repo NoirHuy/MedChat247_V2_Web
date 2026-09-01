@@ -166,7 +166,7 @@ router.post(
         suggestionId: typeof suggestionId === 'string' ? suggestionId : null,
         userId: req.userId || null,
         sessionMemoryPaused: !!sessionMemoryPaused,
-        conversationId: specialtyId === 'health_consultation' ? conversationId || null : null,
+        conversationId: specialtyId === 'health_consultation' || specialtyId === 'nutrition_consultation' ? conversationId || null : null,
         conditions: nutritionConditions,
         signal: controller.signal,
         onChunk: (chunk) => {
