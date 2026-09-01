@@ -9,9 +9,20 @@ import { useChat } from './hooks/useChat'
 import { useTheme } from './hooks/useTheme'
 import { useAccount } from './hooks/useAccount'
 import { useToast } from './hooks/useToast'
-import { DEFAULT_SPECIALTY_ID } from './data/specialties'
+import { SPECIALTIES, DEFAULT_SPECIALTY_ID } from './data/specialties'
 import LegalPage from './components/LegalPage'
 import './App.css'
+
+const SPECIALTY_STORAGE_KEY = 'medai_specialty'
+
+function loadStoredSpecialty() {
+  try {
+    const stored = localStorage.getItem(SPECIALTY_STORAGE_KEY)
+    return SPECIALTIES.some((s) => s.id === stored) ? stored : DEFAULT_SPECIALTY_ID
+  } catch {
+    return DEFAULT_SPECIALTY_ID
+  }
+}
 
 function App() {
   const legalPath = window.location.pathname
@@ -46,7 +57,16 @@ function AppContent() {
   const { message: toastMessage, showToast } = useToast()
 
   const [inputValue, setInputValue] = useState('')
-  const [pendingSpecialtyId, setPendingSpecialtyId] = useState(DEFAULT_SPECIALTY_ID)
+  const [pendingSpecialtyId, setPendingSpecialtyId] = useState(loadStoredSpecialty)
+  // Toggle "Đánh giá theo hồ sơ bệnh nền" (chuyên khoa dinh dưỡng) — tắt khi
+  // tư vấn giúp người khác; lưu trạng thái qua localStorage.
+  const [useHealthProfile, setUseHealthProfile] = useState(() => {
+    try {
+      return localStorage.getItem('medai_nutrition_profile') !== 'off'
+    } catch {
+      return true
+    }
+  })
   const [searchTerm, setSearchTerm] = useState('')
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -98,10 +118,16 @@ function AppContent() {
   }
 
   function handleSpecialtyChange(newId) {
+    // Nhớ chuyên khoa người dùng chọn — tạo cuộc trò chuyện mới hoặc reload
+    // trang sẽ giữ nguyên giao diện chuyên khoa đó.
+    setPendingSpecialtyId(newId)
+    try {
+      localStorage.setItem(SPECIALTY_STORAGE_KEY, newId)
+    } catch {
+      /* localStorage đầy hoặc bị chặn — bỏ qua, không chặn đổi chuyên khoa */
+    }
     if (chat.activeConversation) {
       chat.setSpecialty(chat.activeConversation.id, newId)
-    } else {
-      setPendingSpecialtyId(newId)
     }
   }
 
@@ -109,7 +135,24 @@ function AppContent() {
     const toSend = (text ?? '').trim() || inputValue.trim()
     if (!toSend || chat.isResponding) return
     setInputValue('')
-    chat.sendMessage(toSend, specialtyId, lang, suggestionId)
+    // Bỏ chọn "hồ sơ bệnh nền" ở chuyên khoa dinh dưỡng → tạm tắt inject
+    // bệnh nền + trích xuất hồ sơ cho lượt chat này (sessionMemoryPaused).
+    const pausedForSession = specialtyId === 'nutrition_consultation' && !useHealthProfile
+    chat.sendMessage(toSend, specialtyId, lang, suggestionId, pausedForSession)
+  }
+
+  function handleToggleHealthProfile(enabled) {
+    setUseHealthProfile(enabled)
+    try {
+      localStorage.setItem('medai_nutrition_profile', enabled ? 'on' : 'off')
+    } catch {
+      /* localStorage không khả dụng — bỏ qua */
+    }
+    if (enabled) {
+      showToast(lang === 'en' ? 'Health profile applied' : 'Đã áp dụng hồ sơ bệnh nền của bạn')
+    } else {
+      showToast(lang === 'en' ? 'Health profile paused for this session' : 'Đã tạm tắt hồ sơ bệnh nền')
+    }
   }
 
   function handleNewChat() {
@@ -219,6 +262,8 @@ function AppContent() {
         onStop={chat.stopResponding}
         specialtyId={specialtyId}
         onSpecialtyChange={handleSpecialtyChange}
+        useHealthProfile={useHealthProfile}
+        onToggleHealthProfile={handleToggleHealthProfile}
         onOpenMenu={() => setMobileOpen(true)}
         lang={lang}
         onToggleLang={handleToggleLang}

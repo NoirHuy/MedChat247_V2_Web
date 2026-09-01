@@ -79,16 +79,18 @@ def create_app(consultant: NutritionConsultant | None = None) -> Flask:
 
     @flask_app.route("/api/health")
     def health():
-        return jsonify({"service": "nutrition", "status": "ok"})
+        svc: NutritionConsultant = flask_app.config["CONSULTANT"]
+        return jsonify({
+            "service": "nutrition",
+            "status": "ok",
+            "data_source": getattr(svc, "source", "unknown"),
+        })
 
     @flask_app.route("/api/suggestions")
     def get_suggestions():
         """Lấy danh sách tên món ăn và nguyên liệu phục vụ autocomplete."""
         svc: NutritionConsultant = flask_app.config["CONSULTANT"]
-        dishes = svc.dishes_df["food_name"].dropna().tolist()
-        ingredients = svc.ingredients_df["ingredient_name"].dropna().tolist()
-        all_items = sorted(set(dishes + ingredients))
-        return jsonify(all_items)
+        return jsonify(svc.suggestion_items())
 
     @flask_app.route("/api/dish", methods=["GET"])
     def get_dish_details():

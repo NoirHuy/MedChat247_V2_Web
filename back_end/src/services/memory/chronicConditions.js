@@ -22,6 +22,13 @@ function normalize(text) {
     .replace(/đ/g, 'd')
 }
 
+// Match theo word boundary — sau khi normalize bỏ dấu, các keyword ngắn như
+// 'than' (thận) dễ khớp nhầm từ chứa nó ("6 tháng", "thăng bằng"...).
+const COMPILED_KEYWORDS = CONDITION_KEYWORDS.map(([id, keywords]) => [
+  id,
+  keywords.map((k) => new RegExp(`\\b${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)),
+])
+
 // Resolves the user's active chronic conditions from the Personal Memory
 // profile. Only confirmed, self-reported facts are considered so conditions
 // the user merely asked about ("nếu tôi bị tiểu đường") are not injected.
@@ -40,12 +47,12 @@ export async function getChronicConditionIds(userId, limit = 50) {
     .lean()
 
   const ids = []
+  let dialysis = false
   for (const memory of memories) {
     const text = normalize(memory.content)
     if (!text) continue
-    let dialysis = false
-    for (const [id, keywords] of CONDITION_KEYWORDS) {
-      if (!keywords.some((k) => text.includes(k))) continue
+    for (const [id, patterns] of COMPILED_KEYWORDS) {
+      if (!patterns.some((p) => p.test(text))) continue
       if (id === 'CKD_DIALYSIS') dialysis = true
       if (id === 'CKD_NON_DIALYSIS' && dialysis) continue
       if (!ids.includes(id)) ids.push(id)

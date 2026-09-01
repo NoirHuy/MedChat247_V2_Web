@@ -99,7 +99,7 @@ router.post(
     // entries) for logged-in users, merged with any explicit request
     // conditions. Guests fall back to the Flask engine's own in-message
     // keyword detection (nutrition_service constants.py).
-    const nutritionConditions = Array.isArray(conditions)
+    const requestConditions = Array.isArray(conditions)
       ? conditions.filter((c) => typeof c === 'string' && c.trim()).slice(0, 10).map((c) => c.trim())
       : []
     // Nutrition history carries __NUTRITION_DATA__ card JSON in assistant
@@ -116,16 +116,25 @@ router.post(
     // validateMessages đã bao phủ kiểm tra mảng rỗng / định dạng / giới hạn độ dài.
     validateMessages(chatMessages)
 
-    if (isNutritionChat && req.userId) {
+    // Nguồn bệnh nền dùng cho đánh giá: 'memory' (hồ sơ cá nhân) > 'request'
+    // (client gửi lên) > 'none' (guest / hồ sơ trống — Flask tự dò trong tin nhắn).
+    // sessionMemoryPaused (toggle "tư vấn giúp người khác") tắt cả hai nguồn.
+    let conditionsSource = 'none'
+    const nutritionConditions = [...requestConditions]
+    if (isNutritionChat && req.userId && !sessionMemoryPaused) {
       try {
         const memoryConditions = await getChronicConditionIds(req.userId)
         for (const id of memoryConditions) {
           if (!nutritionConditions.includes(id)) nutritionConditions.push(id)
         }
+        if (memoryConditions.length > 0) conditionsSource = 'memory'
       } catch (err) {
         // Non-fatal: nutrition still answers using in-message detection.
         console.error('[Nutrition] Chronic-condition memory lookup failed:', err.message)
       }
+    }
+    if (conditionsSource === 'none' && nutritionConditions.length > 0) {
+      conditionsSource = 'request'
     }
 
     const quotaReservation = await reserveChatQuota(req.userId, chatMessages)
@@ -168,6 +177,7 @@ router.post(
         sessionMemoryPaused: !!sessionMemoryPaused,
         conversationId: specialtyId === 'health_consultation' || specialtyId === 'nutrition_consultation' ? conversationId || null : null,
         conditions: nutritionConditions,
+        conditionsSource,
         signal: controller.signal,
         onChunk: (chunk) => {
           res.write(chunk)

@@ -152,7 +152,7 @@ export function useChat(account) {
   }, [])
 
   const sendMessage = useCallback(
-    async (text, specialtyIdForNew, lang = 'vi', suggestionId = null) => {
+    async (text, specialtyIdForNew, lang = 'vi', suggestionId = null, sessionMemoryPaused = false) => {
       const trimmed = text.trim()
       if (!trimmed || isResponding) return
 
@@ -239,6 +239,7 @@ export function useChat(account) {
           isSuggestionDemo: !!suggestionId,
           suggestionId,
           conversationId: convId,
+          sessionMemoryPaused: !!sessionMemoryPaused,
           signal: controller.signal,
           onToken: appendToken,
         })

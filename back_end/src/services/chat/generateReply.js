@@ -40,7 +40,7 @@ export const GUEST_CTA = {
   en: '\n\n---\n💡 **Tip:** You are using the standard AI model. [Sign up for free](#auth/signup) to unlock the **Enhanced Medical AI Model** (powered by Knowledge Graph & Personal Clinical Memory).',
 }
 
-export async function generateReply({ messages, specialtyId, lang = 'vi', isSuggestionDemo = false, suggestionId = null, userId = null, sessionMemoryPaused = false, conversationId = null, conditions = null, onChunk, signal }) {
+export async function generateReply({ messages, specialtyId, lang = 'vi', isSuggestionDemo = false, suggestionId = null, userId = null, sessionMemoryPaused = false, conversationId = null, conditions = null, conditionsSource = 'none', onChunk, signal }) {
   const isEn = lang === 'en'
   const isGuest = !userId
   const performanceMeta = {}
@@ -60,7 +60,7 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   // skipped here (extraction still runs on the conversation afterwards).
   if (isNutritionSpecialty(specialtyId)) {
     return await measureStage('nutritionGatewayMs', () =>
-      streamNutritionReply({ messages, conditions, conversationId, onChunk, signal }),
+      streamNutritionReply({ messages, conditions, conditionsSource, conversationId, onChunk, signal }),
     )
   }
 

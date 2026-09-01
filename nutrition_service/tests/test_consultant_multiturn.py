@@ -15,7 +15,8 @@ from src.services.consultant import NutritionConsultant, _is_food_followup
 
 @pytest.fixture(scope="module")
 def consultant():
-    return NutritionConsultant()
+    # Ép nguồn CSV để test deterministic (không phụ thuộc Neo4j đang chạy hay không)
+    return NutritionConsultant(source="csv")
 
 
 class TestSanitizeHistory:
@@ -148,6 +149,17 @@ class TestChatMultiturn:
             SafetyStatus.MODERATE,
             SafetyStatus.AVOID,
         )
+
+    def test_evaluation_details_carry_vietnamese_condition_names(self, consultant):
+        # Badge "Đánh giá theo: ..." trên NutritionCard đọc từ condition_name
+        result = consultant.chat(
+            user_message="Chè khúc bạch cho người tăng huyết áp?",
+            active_conditions=["HYPERTENSION", "DIABETES"],
+            history=[],
+        )
+        details = result["structured_data"]["evaluation"]["details"]
+        assert details["HYPERTENSION"]["condition_name"] == "Tăng huyết áp & Tim mạch"
+        assert details["DIABETES"]["condition_name"].startswith("Đái tháo đường")
 
     def test_ingredient_followup_resolves_from_history(self, consultant):
         result = consultant.chat(

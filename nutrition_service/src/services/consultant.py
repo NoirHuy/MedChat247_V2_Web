@@ -14,7 +14,9 @@ from typing import Any
 import pandas as pd
 
 from src.clinical.rules import ChronicDiseaseEvaluator
-from src.core.constants import MAX_CHAT_HISTORY_TURNS, SafetyStatus
+from src.core.constants import CHRONIC_CONDITIONS, MAX_CHAT_HISTORY_TURNS, SafetyStatus
+from src.database.food_repository import CsvFoodRepository, Neo4jFoodRepository
+from src.database.neo4j_client import Neo4jClient
 from src.services.food_matcher import (
     FoodMatcher,
     categorize_dish,
@@ -26,6 +28,17 @@ from src.services.food_matcher import (
 from src.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
+
+
+def _annotate_condition_names(evaluation: dict[str, Any]) -> dict[str, Any]:
+    """Gắn tên tiếng Việt cho từng bệnh trong evaluation — dùng bởi badge trên
+    NutritionCard ('Đánh giá theo: ...') và ngữ cảnh LLM."""
+    for cond, detail in (evaluation.get("details") or {}).items():
+        d = dict(detail)
+        info = CHRONIC_CONDITIONS.get(cond) or {}
+        d["condition_name"] = info.get("name_vi", cond)
+        evaluation["details"][cond] = d
+    return evaluation
 
 # Câu hỏi nối tiếp về món đã nhắc ở lượt trước: chỉ fallback vào history khi
 # câu hiện tại mang dấu hiệu này — tránh "chào bạn"/"cảm ơn nhé!" bị gắn nhầm
@@ -45,6 +58,32 @@ def _is_food_followup(text: str) -> bool:
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
+
+# Repository dùng cho toàn bộ truy vấn dữ liệu: Neo4j (Cypher) là nguồn chính,
+# CSV là fallback khi graph trống / không kết nối được.
+FoodRepository = CsvFoodRepository | Neo4jFoodRepository
+
+
+def create_food_repository(source: str = "auto") -> FoodRepository:
+    """
+    Tạo repository theo nguồn yêu cầu:
+    - 'auto': thử Neo4j trước (graph phải có dữ liệu Food), lỗi/trống → CSV.
+    - 'neo4j' / 'csv': ép nguồn cố định.
+    """
+    if source in ("auto", "neo4j"):
+        try:
+            client = Neo4jClient()
+            repo = Neo4jFoodRepository(client)
+            if repo.count_dishes() > 0:
+                return repo
+            logger.warning("Neo4j graph không có dữ liệu Food — fallback sang CSV.")
+        except Exception as e:
+            logger.warning("Không thể dùng Neo4j làm nguồn dữ liệu (%s) — fallback sang CSV.", e)
+    return CsvFoodRepository(
+        dishes_path=os.path.join(PROCESSED_DIR, "food_nodes_cleaned.csv"),
+        rels_path=os.path.join(PROCESSED_DIR, "food_nutrient_rels_cleaned.csv"),
+        ingredients_path=os.path.join(PROCESSED_DIR, "vietnam_food_nutrition_cleaned.csv"),
+    )
 
 __all__ = [
     "NutritionConsultant",
@@ -75,60 +114,61 @@ INGREDIENT_NUTRIENT_LABELS = {
 
 
 class NutritionConsultant:
-    """Hệ thống tư vấn dinh dưỡng lâm sàng kết hợp Knowledge Graph và Real LLM."""
+    """
+    Hệ thống tư vấn dinh dưỡng lâm sàng kết hợp Knowledge Graph và Real LLM.
 
-    def __init__(
-        self,
-        dishes_path: str = os.path.join(PROCESSED_DIR, "food_nodes_cleaned.csv"),
-        rels_path: str = os.path.join(PROCESSED_DIR, "food_nutrient_rels_cleaned.csv"),
-        ingredients_path: str = os.path.join(PROCESSED_DIR, "vietnam_food_nutrition_cleaned.csv"),
-    ):
-        self.dishes_df = pd.read_csv(dishes_path, encoding="utf-8")
-        self.rels_df = pd.read_csv(rels_path, encoding="utf-8")
-        self.ingredients_df = pd.read_csv(ingredients_path, encoding="utf-8")
+    Nguồn dữ liệu do FoodRepository cung cấp: Neo4j (Cypher) là nguồn chính,
+    tự fallback về CSV nếu graph trống hoặc không kết nối được.
+    """
 
-        # Index tiền tính để tra cứu nhanh
-        self._dish_names_lower = self.dishes_df["food_name"].str.lower()
-        self._ingredient_names_lower = self.ingredients_df["ingredient_name"].str.lower()
-        self._dish_categories = self.dishes_df["food_name"].apply(categorize_dish)
+    def __init__(self, repository: FoodRepository | None = None, source: str = "auto"):
+        self.repository = repository if repository is not None else create_food_repository(source)
+        self.source = self.repository.source
 
-        self.matcher = FoodMatcher(self.dishes_df, self.ingredients_df)
+        self.matcher = FoodMatcher(
+            self.repository.dish_names, self.repository.ingredient_names
+        )
         self.llm_client = LLMClient()
+        logger.info("NutritionConsultant khởi tạo với nguồn dữ liệu: %s", self.source)
 
     # ── Tra cứu & tư vấn ──────────────────────────────────────────────────────
 
-    def _match_dish(self, q_str: str) -> pd.DataFrame:
-        """Ưu tiên khớp chính xác tuyệt đối, sau đó tìm kiếm chứa chuỗi con không regex."""
-        matched = self.dishes_df[self._dish_names_lower == q_str.lower()]
-        if matched.empty:
-            matched = self.dishes_df[
-                self.dishes_df["food_name"].str.contains(q_str, case=False, na=False, regex=False)
-                | self.dishes_df["food_name_normalized"].str.contains(q_str, case=False, na=False, regex=False)
-            ]
-        return matched
+    def suggestion_items(self) -> list[str]:
+        """Danh sách tên món + nguyên liệu cho autocomplete."""
+        names = [orig for _lower, orig in self.repository.dish_names]
+        names += [orig for _lower, orig in self.repository.ingredient_names]
+        return sorted(set(names))
 
-    def _match_ingredient(self, q_str: str) -> pd.DataFrame:
-        matched = self.ingredients_df[self._ingredient_names_lower == q_str.lower()]
-        if matched.empty:
-            matched = self.ingredients_df[
-                self.ingredients_df["ingredient_name"].str.contains(q_str, case=False, na=False, regex=False)
-            ]
-        return matched
+    def _match_dish(self, q_str: str) -> dict[str, Any] | None:
+        """Ưu tiên khớp chính xác tuyệt đối, sau đó tìm kiếm chứa chuỗi con."""
+        row = self.repository.get_dish(q_str)
+        if row:
+            return row
+        rows = self.repository.find_dishes_by_substring(q_str)
+        return rows[0] if rows else None
+
+    def _match_ingredient(self, q_str: str) -> dict[str, Any] | None:
+        row = self.repository.get_ingredient(q_str)
+        if row:
+            return row
+        rows = self.repository.find_ingredients_by_substring(q_str)
+        return rows[0] if rows else None
 
     def consult_dish(self, dish_query: str, conditions: list[str] | None = None) -> dict[str, Any]:
         """
         Tra cứu và tư vấn dinh dưỡng chi tiết cho 1 món ăn dựa trên danh sách bệnh lý của người dùng.
         """
         q_str = str(dish_query).strip()
-        matched = self._match_dish(q_str)
-        if matched.empty:
+        dish_row = self._match_dish(q_str)
+        if not dish_row:
             return {"error": f"Không tìm thấy món ăn nào khớp với từ khóa '{dish_query}'."}
 
-        dish_row = matched.iloc[0]
-        evaluation = ChronicDiseaseEvaluator.evaluate_dish(dish_row, conditions)
+        evaluation = _annotate_condition_names(
+            ChronicDiseaseEvaluator.evaluate_dish(dish_row, conditions)
+        )
 
         fid = dish_row["food_id"]
-        nutrients = self.rels_df[self.rels_df["food_id"] == fid][["nutrient_name", "amount", "unit"]].to_dict("records")
+        nutrients = self.repository.get_nutrient_details(fid)
 
         alternatives: list[dict[str, Any]] = []
         if evaluation["overall_status"] in (SafetyStatus.AVOID, SafetyStatus.MODERATE):
@@ -162,12 +202,13 @@ class NutritionConsultant:
         Tra cứu và tư vấn dinh dưỡng cho 1 nguyên liệu thực phẩm (theo 100g).
         """
         q_str = str(ing_query).strip()
-        matched = self._match_ingredient(q_str)
-        if matched.empty:
+        ing_row = self._match_ingredient(q_str)
+        if not ing_row:
             return {"error": f"Không tìm thấy nguyên liệu nào khớp với từ khóa '{ing_query}'."}
 
-        ing_row = matched.iloc[0]
-        evaluation = ChronicDiseaseEvaluator.evaluate_ingredient(ing_row, conditions)
+        evaluation = _annotate_condition_names(
+            ChronicDiseaseEvaluator.evaluate_ingredient(ing_row, conditions)
+        )
 
         all_nutrients = []
         for prop, (label, unit) in INGREDIENT_NUTRIENT_LABELS.items():
@@ -218,13 +259,17 @@ class NutritionConsultant:
         target_name = target_dish["food_name"]
         category = categorize_dish(target_name)
 
-        is_same_category = self._dish_categories == category
-        candidates = self.dishes_df[(self.dishes_df["food_name"] != target_name) & is_same_category]
-        if candidates.empty:
-            candidates = self.dishes_df[self.dishes_df["food_name"] != target_name]
+        same_category: list[dict[str, Any]] = []
+        other_category: list[dict[str, Any]] = []
+        for row in self.repository.all_dishes():
+            name = row.get("food_name")
+            if not name or name == target_name:
+                continue
+            (same_category if categorize_dish(name) == category else other_category).append(row)
+        candidates = same_category or other_category
 
         safe_alternatives: list[dict[str, Any]] = []
-        for _, row in candidates.iterrows():
+        for row in candidates:
             eval_res = ChronicDiseaseEvaluator.evaluate_dish(row, conditions)
             if eval_res["overall_status"] != SafetyStatus.SAFE:
                 continue

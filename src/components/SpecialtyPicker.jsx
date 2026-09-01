@@ -44,7 +44,6 @@ export default function SpecialtyPicker({
         >
           {specialties.map((s) => {
             const name = typeof s.name === 'object' ? (s.name[lang] || s.name.vi) : s.name
-            const tagline = typeof s.tagline === 'object' ? (s.tagline[lang] || s.tagline.vi) : s.tagline
             return (
               <button
                 key={s.id}
@@ -58,9 +57,6 @@ export default function SpecialtyPicker({
               >
                 <span className="specialty-picker__item-text">
                   <span className="specialty-picker__item-name">{name}</span>
-                  {tagline && (
-                    <span className="specialty-picker__item-tagline">{tagline}</span>
-                  )}
                 </span>
                 {s.id === value && <CheckIcon className="specialty-picker__check" />}
               </button>

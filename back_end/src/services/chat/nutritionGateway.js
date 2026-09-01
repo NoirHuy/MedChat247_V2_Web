@@ -137,7 +137,7 @@ async function callNutritionService({ message, conditions, history, signal }) {
   }
 }
 
-export async function streamNutritionReply({ messages, conditions, conversationId = null, onChunk, signal }) {
+export async function streamNutritionReply({ messages, conditions, conditionsSource = 'none', conversationId = null, onChunk, signal }) {
   const lastUserText = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
   const history = buildNutritionHistory(messages)
 
@@ -171,7 +171,9 @@ export async function streamNutritionReply({ messages, conditions, conversationI
       performanceMeta: {
         nutritionGateway: true,
         mode: 'card',
+        conditionsSource,
         conditionsCount: mergedConditions.length,
+        conditionsCached: cachedConditions.length > 0,
         historyTurns: Math.floor(history.length / 2),
         resolvedFromHistory: data?.resolved_from_history === true,
       },
@@ -188,7 +190,9 @@ export async function streamNutritionReply({ messages, conditions, conversationI
     performanceMeta: {
       nutritionGateway: true,
       mode: 'text',
+      conditionsSource,
       conditionsCount: mergedConditions.length,
+      conditionsCached: cachedConditions.length > 0,
       historyTurns: Math.floor(history.length / 2),
       resolvedFromHistory: data?.resolved_from_history === true,
     },

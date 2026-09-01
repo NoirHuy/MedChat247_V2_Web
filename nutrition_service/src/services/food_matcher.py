@@ -132,11 +132,19 @@ def extract_conditions_from_text(text: str) -> list[str]:
 
 
 class FoodMatcher:
-    """Matcher 3 tầng (exact → word-boundary → n-gram) trên danh mục món ăn & nguyên liệu."""
+    """Matcher 3 tầng (exact → word-boundary → n-gram) trên danh mục món ăn & nguyên liệu.
 
-    def __init__(self, dishes_df: pd.DataFrame, ingredients_df: pd.DataFrame):
-        self._dish_names: list[tuple[str, str]] = self._build_name_index(dishes_df, "food_name")
-        self._ingredient_names: list[tuple[str, str]] = self._build_name_index(ingredients_df, "ingredient_name")
+    Nhận danh sách tên (từ repository Neo4j hoặc CSV) thay vì DataFrame —
+    nguồn dữ liệu thực tế do NutritionConsultant quản lý.
+    """
+
+    def __init__(
+        self,
+        dish_names: list[tuple[str, str]] | None = None,
+        ingredient_names: list[tuple[str, str]] | None = None,
+    ):
+        self._dish_names: list[tuple[str, str]] = dish_names or []
+        self._ingredient_names: list[tuple[str, str]] = ingredient_names or []
         # Precompile sẵn regex ranh giới từ cho toàn bộ tên (tránh re-compile mỗi lần gọi matcher)
         self._dish_patterns: list[tuple[re.Pattern[str], str]] = [
             (_boundary_pattern(lower), orig) for lower, orig in self._dish_names
@@ -147,11 +155,9 @@ class FoodMatcher:
         self._condition_keywords_sorted = sorted(ALL_CONDITION_KEYWORDS, key=len, reverse=True)
 
     @staticmethod
-    def _build_name_index(df: pd.DataFrame, col: str) -> list[tuple[str, str]]:
+    def _build_name_index(names: Any) -> list[tuple[str, str]]:
         """Danh sách (tên_thường, tên_gốc) đã chuẩn hoá sẵn để tra cứu nhanh."""
-        if col not in df.columns:
-            return []
-        return [(str(name).lower(), str(name)) for name in df[col].dropna()]
+        return [(str(n).lower(), str(n)) for n in names if n is not None]
 
     # ── Tiền xử lý văn bản ────────────────────────────────────────────────────
 

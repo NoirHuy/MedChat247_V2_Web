@@ -58,6 +58,7 @@ def run_import() -> bool:
     MERGE (f:Food {food_id: row.food_id})
     SET f.name = row.food_name,
         f.food_name = row.food_name,
+        f.food_name_normalized = row.food_name_normalized,
         f.food_type = row.food_type,
         f.energy_kcal = toFloat(row.energy_kcal),
         f.protein_g = toFloat(row.protein_g),
@@ -67,6 +68,15 @@ def run_import() -> bool:
         f.fiber_g = toFloat(row.fiber_g),
         f.sodium_mg = toFloat(row.sodium_mg),
         f.potassium_mg = toFloat(row.potassium_mg),
+        f.calcium_mg = toFloat(row.calcium_mg),
+        f.iron_mg = toFloat(row.iron_mg),
+        f.zinc_mg = toFloat(row.zinc_mg),
+        f.magnesium_mg = toFloat(row.magnesium_mg),
+        f.phosphorus_mg = toFloat(row.phosphorus_mg),
+        f.vitamin_a_mcg = toFloat(row.vitamin_a_mcg),
+        f.beta_carotene_mcg = toFloat(row.beta_carotene_mcg),
+        f.vitamin_c_mg = toFloat(row.vitamin_c_mg),
+        f.water_g = toFloat(row.water_g),
         f.cholesterol_mg = toFloat(row.cholesterol_mg);
     """
     client.execute_query(food_cypher)
@@ -77,6 +87,7 @@ def run_import() -> bool:
     LOAD CSV WITH HEADERS FROM 'file:///vietnam_food_nutrition_cleaned.csv' AS row
     MERGE (i:Ingredient {ingredient_id: row.ingredient_id})
     SET i.name = row.ingredient_name,
+        i.ingredient_name = row.ingredient_name,
         i.category = row.category,
         i.energy_kcal = toFloat(row.energy_kcal),
         i.protein_g = toFloat(row.protein_g),
@@ -87,6 +98,13 @@ def run_import() -> bool:
         i.sodium_mg = toFloat(row.sodium_mg),
         i.potassium_mg = toFloat(row.potassium_mg),
         i.phosphorus_mg = toFloat(row.phosphorus_mg),
+        i.calcium_mg = toFloat(row.calcium_mg),
+        i.iron_mg = toFloat(row.iron_mg),
+        i.vitamin_c_mg = toFloat(row.vitamin_c_mg),
+        i.fructose_g = toFloat(row.fructose_g),
+        i.glucose_g = toFloat(row.glucose_g),
+        i.sucrose_g = toFloat(row.sucrose_g),
+        i.water_g = toFloat(row.water_g),
         i.cholesterol_mg = toFloat(row.cholesterol_mg);
     """
     client.execute_query(ing_cypher)

@@ -17,9 +17,9 @@ export async function fetchSmartTitle(text, lang = 'vi') {
   return text.trim().slice(0, 30)
 }
 
-export async function streamAssistantReply({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, conditions, signal, onToken }) {
+export async function streamAssistantReply({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, sessionMemoryPaused, conditions, signal, onToken }) {
   try {
-    return await streamFromBackend({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, conditions, signal, onToken })
+    return await streamFromBackend({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, sessionMemoryPaused, conditions, signal, onToken })
   } catch (err) {
     if (err.name === 'AbortError') throw err
     console.warn('Chat API unavailable:', err)
@@ -37,13 +37,13 @@ export async function streamAssistantReply({ messages, specialtyId, lang, isSugg
   }
 }
 
-async function streamFromBackend({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, conditions, signal, onToken }) {
+async function streamFromBackend({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, sessionMemoryPaused, conditions, signal, onToken }) {
   const res = await fetch(apiUrl('/api/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     signal,
-    body: JSON.stringify({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, conditions }),
+    body: JSON.stringify({ messages, specialtyId, lang, isSuggestionDemo, suggestionId, conversationId, sessionMemoryPaused, conditions }),
   })
 
   if (!res.ok) {

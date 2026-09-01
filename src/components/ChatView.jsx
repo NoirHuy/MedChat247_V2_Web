@@ -14,6 +14,8 @@ export default function ChatView({
   onStop,
   specialtyId,
   onSpecialtyChange,
+  useHealthProfile,
+  onToggleHealthProfile,
   onOpenMenu,
   lang = 'vi',
   onToggleLang,
@@ -101,6 +103,8 @@ export default function ChatView({
         isResponding={isResponding}
         specialtyId={specialtyId}
         onSpecialtyChange={onSpecialtyChange}
+        useHealthProfile={useHealthProfile}
+        onToggleHealthProfile={onToggleHealthProfile}
         lang={lang}
         isWelcome={!hasMessages}
       />

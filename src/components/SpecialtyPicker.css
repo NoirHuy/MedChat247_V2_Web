@@ -92,11 +92,6 @@
   color: var(--text-primary);
 }
 
-.specialty-picker__item-tagline {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 .specialty-picker__check {
   color: var(--bg-accent);
   font-size: 16px;

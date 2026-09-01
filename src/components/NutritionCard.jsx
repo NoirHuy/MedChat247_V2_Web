@@ -1,8 +1,9 @@
 import './NutritionCard.css'
 
-export default function NutritionCard({ data, onSend }) {
+export default function NutritionCard({ data, onSend, lang = 'vi' }) {
   if (!data) return null
 
+  const isEn = lang === 'en'
   const foodName = data.food_name || data.ingredient_name || 'Món ăn'
   const category = data.category || ''
   const evalData = data.evaluation || {}
@@ -10,6 +11,11 @@ export default function NutritionCard({ data, onSend }) {
   const alts     = data.alternatives || data.healthy_alternatives || []
   const llmNote  = data.llm_note || ''
   const allNutrients = data.all_nutrients || []
+
+  // Bệnh nền đang được áp dụng để đánh giá (badge "Đánh giá theo: ...")
+  const evaluatedConditions = Object.values(evalData.details || {})
+    .map((d) => d?.condition_name)
+    .filter(Boolean)
 
   const carbVal = data.carbohydrate_g ?? data.carb_g
 
@@ -54,6 +60,18 @@ export default function NutritionCard({ data, onSend }) {
           <span className="nc__badge-text">{badge.label}</span>
         </div>
       </div>
+
+      {/* ── 1b. BỆNH NỀN ĐANG ÁP DỤNG ── */}
+      {evaluatedConditions.length > 0 && (
+        <div className="nc__conditions">
+          <span className="nc__conditions-label">
+            {isEn ? 'Evaluated for:' : 'Đánh giá theo:'}
+          </span>
+          {evaluatedConditions.map((name) => (
+            <span key={name} className="nc__condition-chip">{name}</span>
+          ))}
+        </div>
+      )}
 
       {/* ── 2. TẦNG 1: 4 ĐẠI DƯỠNG CHẤT CHÍNH (TO RÕ Ở TRÊN) ── */}
       <div className="nc__macros">
