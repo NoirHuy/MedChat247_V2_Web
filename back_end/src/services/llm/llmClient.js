@@ -170,13 +170,13 @@ export async function callLLMWithFailover({
 }
 
 /**
- * Executes a streaming LLM call to the custom Fine-tuned Medical Model (Modal vLLM)
+ * Executes an LLM call to the custom Fine-tuned Medical Model (Modal vLLM)
  * with automatic defensive failover to the primary chat model if Modal is unavailable.
  */
 export async function callFinetunedLLM({
   messages,
-  stream = true,
-  maxTokens = 1500,
+  stream = false,
+  maxTokens = 600,
   temperature = 0.3,
   timeoutMs = 60000,
   fallbackModel = null,
@@ -238,6 +238,77 @@ export async function callFinetunedLLM({
       onChunk,
       signal,
     })
+  }
+}
+
+/**
+ * Translates a Vietnamese medical query to English using the 'medchat' model via 9Router.
+ */
+export async function translateViToEn(text, signal = null) {
+  if (!text || !text.trim()) return text
+
+  try {
+    const translationMessages = [
+      {
+        role: 'system',
+        content: 'You are a professional medical translator. Translate the following Vietnamese clinical question accurately and fluently into English. Preserve all clinical terms, symptom descriptions, lab numbers, and medical context without adding any preamble. Output ONLY the English translation.'
+      },
+      {
+        role: 'user',
+        content: text
+      }
+    ]
+
+    const translated = await callLLM({
+      messages: translationMessages,
+      model: env.openrouterModelChat || 'medchat',
+      stream: false,
+      maxTokens: 500,
+      temperature: 0.1,
+      timeoutMs: 20000,
+      signal
+    })
+
+    return (translated || '').trim() || text
+  } catch (err) {
+    auditLog('LLM_TRANSLATION', 'Warning', `translateViToEn failed (${err.message}), using original query.`, 'warn')
+    return text
+  }
+}
+
+/**
+ * Translates an English medical answer to Vietnamese in real-time streaming using the 'medchat' model via 9Router.
+ */
+export async function translateEnToViStreaming(englishText, onChunk, signal = null) {
+  if (!englishText || !englishText.trim()) return englishText
+
+  try {
+    const translationMessages = [
+      {
+        role: 'system',
+        content: 'Bạn là chuyên gia y khoa dịch thuật. Hãy dịch câu trả lời y tế tiếng Anh dưới đây sang tiếng Việt một cách chuẩn xác, tự nhiên, khoa học và ân cần. Giữ nguyên định dạng, các tiêu đề mục và cấu trúc gạch đầu dòng. TUYỆT ĐỐI KHÔNG thêm lời giải thích ngoài lề, chỉ xuất bản dịch tiếng Việt.'
+      },
+      {
+        role: 'user',
+        content: englishText
+      }
+    ]
+
+    const translated = await callLLM({
+      messages: translationMessages,
+      model: env.openrouterModelChat || 'medchat',
+      stream: true,
+      maxTokens: 1200,
+      temperature: 0.2,
+      timeoutMs: 40000,
+      onChunk,
+      signal
+    })
+
+    return translated || englishText
+  } catch (err) {
+    auditLog('LLM_TRANSLATION', 'Warning', `translateEnToViStreaming failed (${err.message}), streaming original English text.`, 'warn')
+    return englishText
   }
 }
 

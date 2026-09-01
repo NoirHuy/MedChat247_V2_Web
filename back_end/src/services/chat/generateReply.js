@@ -2,7 +2,7 @@ import { env } from '../../config/env.js'
 import { getSpecialty } from '../../config/specialties.js'
 import { auditLog } from '../../utils/auditLog.js'
 import { streamText } from '../llm/streaming.js'
-import { callLLM, callFinetunedLLM } from '../llm/llmClient.js'
+import { callLLM, callFinetunedLLM, translateViToEn, translateEnToViStreaming } from '../llm/llmClient.js'
 import { renderSystemPrompt } from '../prompts/promptRegistry.js'
 import { computeAdaptiveContext } from '../graphrag/adaptiveContext.js'
 import { extractSymptomsFromHistory } from '../graphrag/symptomExtraction.js'
@@ -110,26 +110,51 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
       }
     }
 
-    let systemPrompt = renderSystemPrompt('general_consultation', lang, {})
+    const defaultSystemPrompt = "You are MedChat247, an expert medical AI assistant. Provide comprehensive, evidence-based, and empathetic medical information."
+    let systemPromptContent = defaultSystemPrompt
     if (memoryPromptBlock) {
-      systemPrompt += `\n\n${memoryPromptBlock}`
+      systemPromptContent += `\n\n[USER CLINICAL PROFILE]:\n${memoryPromptBlock}`
     }
 
-    const chatMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages
-    ]
+    let englishMessages = []
 
-    const baseReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
-      messages: chatMessages,
-      stream: true,
-      maxTokens: 1500,
+    if (lang === 'vi') {
+      // 1. If Vietnamese, translate user query into English using 'medchat' model from 9Router
+      const userText = lastUserText || messages.filter(m => m.role === 'user').at(-1)?.content || ''
+      const translatedUserText = await measureStage('queryTranslationMs', () => translateViToEn(userText, signal))
+
+      englishMessages = [
+        { role: 'system', content: systemPromptContent },
+        { role: 'user', content: translatedUserText }
+      ]
+    } else {
+      // 2. If English, send straight to fine-tuned model
+      englishMessages = [
+        { role: 'system', content: systemPromptContent },
+        ...messages
+      ]
+    }
+
+    // 3. Call fine-tuned model (Modal vLLM) with stream: false, max_tokens: 600, temperature: 0.3
+    const englishReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
+      messages: englishMessages,
+      stream: false,
+      maxTokens: 600,
       temperature: 0.3,
-      onChunk,
       signal
     }))
 
-    let fullReplyText = baseReplyText || ''
+    let fullReplyText = ''
+
+    if (lang === 'vi') {
+      // 4. Translate English response back to Vietnamese in real-time streaming using 'medchat' model
+      fullReplyText = await measureStage('answerTranslationMs', () => translateEnToViStreaming(englishReplyText, onChunk, signal))
+    } else {
+      // Stream English answer directly to client
+      await streamText(englishReplyText, onChunk, signal)
+      fullReplyText = englishReplyText || ''
+    }
+
     if (isGuest) {
       const ctaText = isEn ? GUEST_CTA.en : GUEST_CTA.vi
       await streamText(ctaText, onChunk, signal, {

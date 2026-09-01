@@ -16,10 +16,14 @@ vi.mock('../llm/llmClient.js', () => ({
     if (onChunk) onChunk(reply)
     return reply
   }),
-  callFinetunedLLM: vi.fn(async ({ onChunk }) => {
-    const reply = 'Mock Fine-tuned Model medical response.'
-    if (onChunk) onChunk(reply)
-    return reply
+  callFinetunedLLM: vi.fn(async () => {
+    return 'Mock Fine-tuned Model English response.'
+  }),
+  translateViToEn: vi.fn(async (text) => `Translated English: ${text}`),
+  translateEnToViStreaming: vi.fn(async (text, onChunk) => {
+    const viReply = `Bản dịch Tiếng Việt: ${text}`
+    if (onChunk) onChunk(viReply)
+    return viReply
   }),
 }))
 
@@ -211,7 +215,7 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
     expect(res.performanceMeta.nutritionGateway).toBe(true)
   })
 
-  it('routes general_consultation to the fine-tuned model (Modal vLLM)', async () => {
+  it('routes general_consultation in English directly to the fine-tuned model (Modal vLLM)', async () => {
     const chunks = []
     const res = await generateReply({
       messages: [{ role: 'user', content: 'Explain mechanism of ACE inhibitors' }],
@@ -221,11 +225,26 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
       onChunk: (c) => chunks.push(c),
     })
 
-    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.fullReplyText).toContain('Mock Fine-tuned Model English response.')
     expect(res.performanceMeta.specialty).toBe('general_consultation')
     expect(res.performanceMeta.fineTuned).toBe(true)
     expect(res.performanceMeta.model).toBe('qwen25-med')
     expect(res.fullReplyText).not.toContain(GUEST_CTA.en)
+  })
+
+  it('routes general_consultation in Vietnamese through 9Router translation pipeline', async () => {
+    const chunks = []
+    const res = await generateReply({
+      messages: [{ role: 'user', content: 'Bệnh nhân 52 tuổi bị tiểu đường type 2' }],
+      specialtyId: 'general_consultation',
+      lang: 'vi',
+      userId: 'user-123',
+      onChunk: (c) => chunks.push(c),
+    })
+
+    expect(res.fullReplyText).toContain('Bản dịch Tiếng Việt: Mock Fine-tuned Model English response.')
+    expect(res.performanceMeta.specialty).toBe('general_consultation')
+    expect(res.performanceMeta.fineTuned).toBe(true)
   })
 
   it('for general_consultation in guest mode: appends guest CTA', async () => {
@@ -238,7 +257,7 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
       onChunk: (c) => chunks.push(c),
     })
 
-    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.fullReplyText).toContain('Bản dịch Tiếng Việt: Mock Fine-tuned Model English response.')
     expect(res.performanceMeta.isGuest).toBe(true)
     expect(res.fullReplyText).toContain(GUEST_CTA.vi)
   })
@@ -254,7 +273,7 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
       onChunk: (c) => chunks.push(c),
     })
 
-    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.fullReplyText).toContain('Bản dịch Tiếng Việt: Mock Fine-tuned Model English response.')
     expect(res.performanceMeta.specialty).toBe('general_consultation')
   })
 
