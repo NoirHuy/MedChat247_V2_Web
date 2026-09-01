@@ -160,7 +160,8 @@ export async function callLLMWithFailover({
 }
 
 /**
- * Executes a streaming LLM call to the custom Fine-tuned Medical Model (Modal vLLM).
+ * Executes a streaming LLM call to the custom Fine-tuned Medical Model (Modal vLLM)
+ * with automatic defensive failover to the primary chat model if Modal is unavailable.
  */
 export async function callFinetunedLLM({
   messages,
@@ -168,23 +169,47 @@ export async function callFinetunedLLM({
   maxTokens = 1500,
   temperature = 0.3,
   timeoutMs = 60000,
+  fallbackModel = null,
   onChunk = null,
   signal = null,
 }) {
   const baseUrl = env.finetuneLlmBaseUrl || 'https://huyphuhunghuyfb--medchat247-backend-serve-vllm.modal.run/v1'
   const apiKey = env.finetuneLlmApiKey || 'medchat247-secret-key-2026'
 
-  return await callLLM({
-    messages,
-    model: 'qwen25-med',
-    stream,
-    maxTokens,
-    temperature,
-    timeoutMs,
-    baseUrl,
-    apiKey,
-    onChunk,
-    signal,
-  })
+  try {
+    auditLog('FINE_TUNED_LLM', 'Info', `Calling Modal vLLM fine-tuned model "qwen25-med" at ${baseUrl}`)
+    return await callLLM({
+      messages,
+      model: 'qwen25-med',
+      stream,
+      maxTokens,
+      temperature,
+      timeoutMs,
+      baseUrl,
+      apiKey,
+      onChunk,
+      signal,
+    })
+  } catch (err) {
+    const isTimeout = err.name === 'TimeoutError' || err.message?.includes('aborted') || err.message?.includes('Timeout')
+    auditLog(
+      'FINE_TUNED_LLM',
+      'Warning',
+      `Modal vLLM model failed (${isTimeout ? 'Timeout' : err.message}). Retrying with defensive fallback model...`,
+      'warn'
+    )
+
+    // Defensive fallback to primary chat model if Modal is cold-starting or unreachable
+    return await callLLM({
+      messages,
+      model: fallbackModel || env.openrouterModelChat,
+      stream,
+      maxTokens,
+      timeoutMs: 30000,
+      onChunk,
+      signal,
+    })
+  }
 }
+
 
