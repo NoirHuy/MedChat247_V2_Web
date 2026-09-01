@@ -109,16 +109,23 @@ function AppContent() {
   }
 
   function handleSpecialtyChange(newId) {
-    // Nhớ chuyên khoa người dùng chọn — tạo cuộc trò chuyện mới hoặc reload
-    // trang sẽ giữ nguyên giao diện chuyên khoa đó.
+    if (newId === specialtyId && chat.activeConversation && chat.activeConversation.messages.length === 0) return
     setPendingSpecialtyId(newId)
     try {
       localStorage.setItem(SPECIALTY_STORAGE_KEY, newId)
     } catch {
       /* localStorage đầy hoặc bị chặn — bỏ qua, không chặn đổi chuyên khoa */
     }
-    if (chat.activeConversation) {
+
+    if (chat.activeConversation && chat.activeConversation.messages.length > 0) {
+      // Nếu cuộc trò chuyện hiện tại đã có tin nhắn, khi đổi chuyên khoa sẽ bắt đầu cuộc trò chuyện mới
+      // để lập tức chuyển sang màn hình chào mừng (WelcomeScreen) tương ứng của chuyên khoa đó.
+      chat.startNewConversation(newId)
+    } else if (chat.activeConversation) {
+      // Nếu cuộc trò chuyện hiện tại đang trống, chỉ cần cập nhật chuyên khoa để đổi WelcomeScreen
       chat.setSpecialty(chat.activeConversation.id, newId)
+    } else {
+      chat.startNewConversation(newId)
     }
   }
 
@@ -136,6 +143,10 @@ function AppContent() {
 
   function handleSelectConversation(id) {
     chat.selectConversation(id)
+    const selected = chat.conversations.find((c) => c.id === id)
+    if (selected?.specialtyId) {
+      setPendingSpecialtyId(selected.specialtyId)
+    }
     setMobileOpen(false)
   }
 
