@@ -1,5 +1,6 @@
 import { env } from '../../config/env.js'
 import { auditLog } from '../../utils/auditLog.js'
+import { streamText } from './streaming.js'
 
 function getReasoningConfig(modelName) {
   if (
@@ -308,6 +309,7 @@ export async function translateEnToViStreaming(englishText, onChunk, signal = nu
     return translated || englishText
   } catch (err) {
     auditLog('LLM_TRANSLATION', 'Warning', `translateEnToViStreaming failed (${err.message}), streaming original English text.`, 'warn')
+    await streamText(englishText, onChunk, signal)
     return englishText
   }
 }

@@ -16,8 +16,10 @@ vi.mock('../llm/llmClient.js', () => ({
     if (onChunk) onChunk(reply)
     return reply
   }),
-  callFinetunedLLM: vi.fn(async () => {
-    return 'Mock Fine-tuned Model English response.'
+  callFinetunedLLM: vi.fn(async ({ onChunk }) => {
+    const reply = 'Mock Fine-tuned Model English response.'
+    if (onChunk) onChunk(reply)
+    return reply
   }),
   translateViToEn: vi.fn(async (text) => `Translated English: ${text}`),
   translateEnToViStreaming: vi.fn(async (text, onChunk) => {

@@ -116,43 +116,44 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
       systemPromptContent += `\n\n[USER CLINICAL PROFILE]:\n${memoryPromptBlock}`
     }
 
-    let englishMessages = []
+    let fullReplyText = ''
 
     if (lang === 'vi') {
       // 1. If Vietnamese, translate user query into English using 'medchat' model from 9Router
       const userText = lastUserText || messages.filter(m => m.role === 'user').at(-1)?.content || ''
       const translatedUserText = await measureStage('queryTranslationMs', () => translateViToEn(userText, signal))
 
-      englishMessages = [
+      const englishMessages = [
         { role: 'system', content: systemPromptContent },
         { role: 'user', content: translatedUserText }
       ]
+
+      // 2. Call fine-tuned model (Modal vLLM) with stream: false to get complete English clinical response
+      const englishReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
+        messages: englishMessages,
+        stream: false,
+        maxTokens: 600,
+        temperature: 0.3,
+        signal
+      }))
+
+      // 3. Translate English response back to Vietnamese in real-time streaming directly to frontend via SSE
+      fullReplyText = await measureStage('answerTranslationMs', () => translateEnToViStreaming(englishReplyText, onChunk, signal))
     } else {
-      // 2. If English, send straight to fine-tuned model
-      englishMessages = [
+      // If English, stream directly from Modal fine-tuned model to frontend via SSE
+      const englishMessages = [
         { role: 'system', content: systemPromptContent },
         ...messages
       ]
-    }
 
-    // 3. Call fine-tuned model (Modal vLLM) with stream: false, max_tokens: 600, temperature: 0.3
-    const englishReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
-      messages: englishMessages,
-      stream: false,
-      maxTokens: 600,
-      temperature: 0.3,
-      signal
-    }))
-
-    let fullReplyText = ''
-
-    if (lang === 'vi') {
-      // 4. Translate English response back to Vietnamese in real-time streaming using 'medchat' model
-      fullReplyText = await measureStage('answerTranslationMs', () => translateEnToViStreaming(englishReplyText, onChunk, signal))
-    } else {
-      // Stream English answer directly to client
-      await streamText(englishReplyText, onChunk, signal)
-      fullReplyText = englishReplyText || ''
+      fullReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
+        messages: englishMessages,
+        stream: true,
+        maxTokens: 600,
+        temperature: 0.3,
+        onChunk,
+        signal
+      }))
     }
 
     if (isGuest) {
