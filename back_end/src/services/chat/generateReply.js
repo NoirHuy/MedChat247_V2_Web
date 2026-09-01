@@ -2,7 +2,7 @@ import { env } from '../../config/env.js'
 import { getSpecialty } from '../../config/specialties.js'
 import { auditLog } from '../../utils/auditLog.js'
 import { streamText } from '../llm/streaming.js'
-import { callLLM } from '../llm/llmClient.js'
+import { callLLM, callFinetunedLLM } from '../llm/llmClient.js'
 import { renderSystemPrompt } from '../prompts/promptRegistry.js'
 import { computeAdaptiveContext } from '../graphrag/adaptiveContext.js'
 import { extractSymptomsFromHistory } from '../graphrag/symptomExtraction.js'
@@ -44,6 +44,7 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   const isEn = lang === 'en'
   const isGuest = !userId
   const performanceMeta = {}
+
   const measureStage = async (name, operation) => {
     const startedAt = performance.now()
     try {
@@ -93,6 +94,62 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   }
   // SYMPTOM_QUERY: fall through to existing pipeline below
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── GENERAL CONSULTATION SPECIALTY: custom fine-tuned model (Modal vLLM) ─────
+  if (specialtyId === 'general_consultation' || specialtyId === 'general') {
+    let memoryPromptBlock = ''
+    let memoriesUsed = []
+
+    if (userId && !sessionMemoryPaused) {
+      try {
+        const memRes = await measureStage('memoryRetrievalMs', () => getActiveMemoryContext(userId, lastUserText))
+        memoryPromptBlock = memRes.promptBlock
+        memoriesUsed = memRes.memoriesUsed
+      } catch (e) {
+        console.error('[GenerateReply] Memory retrieval error for general consultation:', e)
+      }
+    }
+
+    let systemPrompt = renderSystemPrompt('general_consultation', lang, {})
+    if (memoryPromptBlock) {
+      systemPrompt += `\n\n${memoryPromptBlock}`
+    }
+
+    const chatMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ]
+
+    const baseReplyText = await measureStage('answerGenerationMs', () => callFinetunedLLM({
+      messages: chatMessages,
+      stream: true,
+      maxTokens: 1500,
+      temperature: 0.3,
+      onChunk,
+      signal
+    }))
+
+    let fullReplyText = baseReplyText || ''
+    if (isGuest) {
+      const ctaText = isEn ? GUEST_CTA.en : GUEST_CTA.vi
+      await streamText(ctaText, onChunk, signal, {
+        thinkingDelayMs: 80,
+        tokenDelayMs: 10,
+      })
+      fullReplyText += ctaText
+    }
+
+    return {
+      fullReplyText,
+      memoriesUsed,
+      performanceMeta: {
+        specialty: 'general_consultation',
+        model: 'qwen25-med',
+        fineTuned: true,
+        isGuest,
+      }
+    }
+  }
 
   // No API Key: hard error in production; dev-only mock via flag
   if (!env.llmApiKey) {

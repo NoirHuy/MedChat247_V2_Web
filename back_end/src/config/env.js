@@ -90,6 +90,10 @@ export const env = {
   },
   neo4jDatabase: (process.env.NEO4J_DATABASE || 'neo4j').trim(),
 
+  // Fine-tuned Model (Modal vLLM) — API target for 'general_consultation' specialty.
+  finetuneLlmBaseUrl: (process.env.FINETUNE_LLM_BASE_URL || 'https://huyphuhunghuyfb--medchat247-backend-serve-vllm.modal.run/v1').trim(),
+  finetuneLlmApiKey: (process.env.FINETUNE_LLM_API_KEY || 'medchat247-secret-key-2026').trim(),
+
   // Nutrition microservice (Python Flask) — API Gateway target for the
   // 'nutrition_consultation' specialty. Docker: http://nutrition:5000,
   // local dev: http://127.0.0.1:5000 (127.0.0.1 avoids Node preferring ::1).

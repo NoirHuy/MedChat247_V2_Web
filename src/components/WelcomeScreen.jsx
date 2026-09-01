@@ -5,6 +5,7 @@ import './WelcomeScreen.css'
 export default function WelcomeScreen({ onPick, specialtyId, lang = 'vi' }) {
   const isEn = lang === 'en'
   const isNutrition = specialtyId === 'nutrition_consultation'
+  const isGeneral = specialtyId === 'general_consultation'
   const currentSuggestions = getSuggestions(specialtyId)
 
   return (
@@ -20,6 +21,12 @@ export default function WelcomeScreen({ onPick, specialtyId, lang = 'vi' }) {
           ) : (
             <>Bạn cần tư vấn dinh dưỡng & thực đơn món ăn cùng <span className="welcome__title-gradient">MedChat247</span> không?</>
           )
+        ) : isGeneral ? (
+          isEn ? (
+            <>What medical & clinical questions can <span className="welcome__title-gradient">MedChat247</span> explore for you today?</>
+          ) : (
+            <>Bạn có thắc mắc y khoa & bệnh học nào muốn tư vấn cùng <span className="welcome__title-gradient">MedChat247</span> không?</>
+          )
         ) : (
           isEn ? (
             <>What health questions can <span className="welcome__title-gradient">MedChat247</span> explore for you today?</>
@@ -34,6 +41,10 @@ export default function WelcomeScreen({ onPick, specialtyId, lang = 'vi' }) {
           isEn
             ? "Ask about any dish, ingredients, chronic disease diets, or select a prompt below."
             : "Hỏi về bất kỳ món ăn, nguyên liệu, thực đơn bệnh mạn tính nào — hoặc chọn gợi ý bên dưới."
+        ) : isGeneral ? (
+          isEn
+            ? "Explore clinical consultations, disease pathophysiology, pharmacology, or select a prompt below."
+            : "Tư vấn lâm sàng, bệnh học, dược lý và định hướng điều trị tổng quát — hoặc chọn gợi ý bên dưới."
         ) : (
           isEn
             ? "Describe symptoms or ask any medical question — or select a prompt below."

@@ -124,9 +124,75 @@ export const NUTRITION_SUGGESTIONS = [
   },
 ]
 
+export const GENERAL_SUGGESTIONS = [
+  {
+    id: 'gen_1',
+    title: {
+      vi: 'Tư Vấn Lâm Sàng & Lối Sống',
+      en: 'Clinical Care & Lifestyle'
+    },
+    detail: {
+      vi: 'Bệnh nhân 52 tuổi mới phát hiện Đái tháo đường type 2 (HbA1c 7.8%)',
+      en: '52-year-old male newly diagnosed with Type 2 Diabetes (HbA1c 7.8%)'
+    },
+    prompt: {
+      vi: 'Bệnh nhân nam 52 tuổi mới được chẩn đoán Đái tháo đường type 2 (HbA1c 7.8%). Các biện pháp can thiệp lối sống chính và khuyến nghị dùng thuốc ban đầu là gì?',
+      en: 'A 52-year-old male is newly diagnosed with Type 2 Diabetes (HbA1c 7.8%). What are the primary lifestyle interventions and first-line pharmacological recommendations?'
+    },
+  },
+  {
+    id: 'gen_2',
+    title: {
+      vi: 'Bệnh Học & Dược Lý',
+      en: 'Pathophysiology & Pharmacology'
+    },
+    detail: {
+      vi: 'Cơ chế tác dụng thuốc ức chế men chuyển ACEi & phản ứng ho khan',
+      en: 'ACE inhibitors mechanism and dry cough management'
+    },
+    prompt: {
+      vi: 'Hãy giải thích cơ chế tác dụng của nhóm thuốc ức chế men chuyển (ACE inhibitors) và tại sao chúng có thể gây ho khan ở một số bệnh nhân.',
+      en: 'Explain the mechanism of action of ACE inhibitors and why they may cause a dry cough in some patients.'
+    },
+  },
+  {
+    id: 'gen_3',
+    title: {
+      vi: 'Chẩn Đoán Phân Biệt',
+      en: 'Differential Diagnosis'
+    },
+    detail: {
+      vi: 'Đau dữ dội đột ngột vùng thượng vị lan ra sau lưng kèm nôn ói',
+      en: 'Sudden severe epigastric pain radiating to the back with nausea'
+    },
+    prompt: {
+      vi: 'Một bệnh nhân có biểu hiện đau dữ dội đột ngột vùng thượng vị lan ra sau lưng, kèm buồn nôn và nôn. Các chẩn đoán phân biệt chính cần đánh giá là gì?',
+      en: 'A patient presents with sudden severe epigastric pain radiating to the back, accompanied by nausea and vomiting. What are the key differential diagnoses to evaluate?'
+    },
+  },
+  {
+    id: 'gen_4',
+    title: {
+      vi: 'Đau Đầu Căng Thẳng & Mất Ngủ',
+      en: 'Tension Headache & Insomnia'
+    },
+    detail: {
+      vi: 'Đau ê ẩm như bó chặt vùng trán, thái dương, khó ngủ và stress',
+      en: 'Tension headaches, sleep hygiene and stress management'
+    },
+    prompt: {
+      vi: 'Tôi thường xuyên bị đau ê ẩm như bó chặt vùng trán và hai bên thái dương vào cuối ngày, kèm khó ngủ và uể oải. Xin bác sĩ hướng dẫn cách cải thiện và xử lý.',
+      en: 'I often have a tight squeezing pain across my forehead and temples in the evening with insomnia and fatigue. Please advise on management and lifestyle adjustments.'
+    },
+  },
+]
+
 export function getSuggestions(specialtyId) {
   if (specialtyId === 'nutrition_consultation') {
     return NUTRITION_SUGGESTIONS
+  }
+  if (specialtyId === 'general_consultation') {
+    return GENERAL_SUGGESTIONS
   }
   return SUGGESTIONS
 }

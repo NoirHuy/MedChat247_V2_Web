@@ -16,41 +16,54 @@ function getReasoningConfig(modelName) {
 }
 
 /**
- * Executes a streaming or non-streaming LLM request to OpenRouter.
+ * Executes a streaming or non-streaming LLM request to OpenRouter/9Router or Fine-tuned vLLM.
  */
 export async function callLLM({
   messages,
   model = null,
   stream = false,
   maxTokens = 1500,
+  temperature = undefined,
   timeoutMs = 35000,
   onChunk = null,
-  signal = null
+  signal = null,
+  baseUrl = null,
+  apiKey = null,
 }) {
   const modelName = model || env.openrouterModel
   const effectiveSignal = signal || (timeoutMs ? AbortSignal.timeout(timeoutMs) : null)
+  const targetBaseUrl = (baseUrl || env.llmBaseUrl).replace(/\/+$/, '')
+  const targetApiKey = apiKey || env.llmApiKey
 
-  const response = await fetch(`${env.llmBaseUrl}/chat/completions`, {
+  const requestBody = {
+    model: modelName,
+    messages,
+    stream,
+    max_tokens: maxTokens,
+  }
+  if (temperature !== undefined) {
+    requestBody.temperature = temperature
+  }
+  const reasoning = getReasoningConfig(modelName)
+  if (reasoning) {
+    requestBody.reasoning = reasoning
+  }
+
+  const response = await fetch(`${targetBaseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.llmApiKey}`,
+      'Authorization': `Bearer ${targetApiKey}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': env.clientOrigin,
       'X-Title': 'MedChat247'
     },
-    body: JSON.stringify({
-      model: modelName,
-      messages,
-      stream,
-      max_tokens: maxTokens,
-      reasoning: getReasoningConfig(modelName)
-    }),
+    body: JSON.stringify(requestBody),
     signal: effectiveSignal
   })
 
   if (!response.ok) {
     const errText = await response.text()
-    throw new Error(`OpenRouter API error: ${response.status} - ${errText}`)
+    throw new Error(`LLM API error (${targetBaseUrl}): ${response.status} - ${errText}`)
   }
 
   if (stream) {
@@ -145,3 +158,33 @@ export async function callLLMWithFailover({
     }
   }
 }
+
+/**
+ * Executes a streaming LLM call to the custom Fine-tuned Medical Model (Modal vLLM).
+ */
+export async function callFinetunedLLM({
+  messages,
+  stream = true,
+  maxTokens = 1500,
+  temperature = 0.3,
+  timeoutMs = 60000,
+  onChunk = null,
+  signal = null,
+}) {
+  const baseUrl = env.finetuneLlmBaseUrl || 'https://huyphuhunghuyfb--medchat247-backend-serve-vllm.modal.run/v1'
+  const apiKey = env.finetuneLlmApiKey || 'medchat247-secret-key-2026'
+
+  return await callLLM({
+    messages,
+    model: 'qwen25-med',
+    stream,
+    maxTokens,
+    temperature,
+    timeoutMs,
+    baseUrl,
+    apiKey,
+    onChunk,
+    signal,
+  })
+}
+

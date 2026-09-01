@@ -16,6 +16,11 @@ vi.mock('../llm/llmClient.js', () => ({
     if (onChunk) onChunk(reply)
     return reply
   }),
+  callFinetunedLLM: vi.fn(async ({ onChunk }) => {
+    const reply = 'Mock Fine-tuned Model medical response.'
+    if (onChunk) onChunk(reply)
+    return reply
+  }),
 }))
 
 vi.mock('../llm/streaming.js', () => ({
@@ -204,5 +209,37 @@ describe('generateReply - Guest vs Logged-in User Tiering', () => {
     expect(res.fullReplyText).toContain('__NUTRITION_DATA__')
     expect(chunks.join('')).toContain('__NUTRITION_DATA__')
     expect(res.performanceMeta.nutritionGateway).toBe(true)
+  })
+
+  it('routes general_consultation to the fine-tuned model (Modal vLLM)', async () => {
+    const chunks = []
+    const res = await generateReply({
+      messages: [{ role: 'user', content: 'Explain mechanism of ACE inhibitors' }],
+      specialtyId: 'general_consultation',
+      lang: 'en',
+      userId: 'user-123',
+      onChunk: (c) => chunks.push(c),
+    })
+
+    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.performanceMeta.specialty).toBe('general_consultation')
+    expect(res.performanceMeta.fineTuned).toBe(true)
+    expect(res.performanceMeta.model).toBe('qwen25-med')
+    expect(res.fullReplyText).not.toContain(GUEST_CTA.en)
+  })
+
+  it('for general_consultation in guest mode: appends guest CTA', async () => {
+    const chunks = []
+    const res = await generateReply({
+      messages: [{ role: 'user', content: 'Tư vấn phác đồ điều trị tiểu đường type 2' }],
+      specialtyId: 'general_consultation',
+      lang: 'vi',
+      userId: null,
+      onChunk: (c) => chunks.push(c),
+    })
+
+    expect(res.fullReplyText).toContain('Mock Fine-tuned Model medical response.')
+    expect(res.performanceMeta.isGuest).toBe(true)
+    expect(res.fullReplyText).toContain(GUEST_CTA.vi)
   })
 })

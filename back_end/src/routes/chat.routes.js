@@ -175,7 +175,7 @@ router.post(
         suggestionId: typeof suggestionId === 'string' ? suggestionId : null,
         userId: req.userId || null,
         sessionMemoryPaused: !!sessionMemoryPaused,
-        conversationId: specialtyId === 'health_consultation' || specialtyId === 'nutrition_consultation' ? conversationId || null : null,
+        conversationId: ['health_consultation', 'general_consultation', 'general', 'nutrition_consultation'].includes(specialtyId) ? conversationId || null : null,
         conditions: nutritionConditions,
         conditionsSource,
         signal: controller.signal,
