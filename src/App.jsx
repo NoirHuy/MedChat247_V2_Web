@@ -58,15 +58,6 @@ function AppContent() {
 
   const [inputValue, setInputValue] = useState('')
   const [pendingSpecialtyId, setPendingSpecialtyId] = useState(loadStoredSpecialty)
-  // Toggle "Đánh giá theo hồ sơ bệnh nền" (chuyên khoa dinh dưỡng) — tắt khi
-  // tư vấn giúp người khác; lưu trạng thái qua localStorage.
-  const [useHealthProfile, setUseHealthProfile] = useState(() => {
-    try {
-      return localStorage.getItem('medai_nutrition_profile') !== 'off'
-    } catch {
-      return true
-    }
-  })
   const [searchTerm, setSearchTerm] = useState('')
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -135,24 +126,7 @@ function AppContent() {
     const toSend = (text ?? '').trim() || inputValue.trim()
     if (!toSend || chat.isResponding) return
     setInputValue('')
-    // Bỏ chọn "hồ sơ bệnh nền" ở chuyên khoa dinh dưỡng → tạm tắt inject
-    // bệnh nền + trích xuất hồ sơ cho lượt chat này (sessionMemoryPaused).
-    const pausedForSession = specialtyId === 'nutrition_consultation' && !useHealthProfile
-    chat.sendMessage(toSend, specialtyId, lang, suggestionId, pausedForSession)
-  }
-
-  function handleToggleHealthProfile(enabled) {
-    setUseHealthProfile(enabled)
-    try {
-      localStorage.setItem('medai_nutrition_profile', enabled ? 'on' : 'off')
-    } catch {
-      /* localStorage không khả dụng — bỏ qua */
-    }
-    if (enabled) {
-      showToast(lang === 'en' ? 'Health profile applied' : 'Đã áp dụng hồ sơ bệnh nền của bạn')
-    } else {
-      showToast(lang === 'en' ? 'Health profile paused for this session' : 'Đã tạm tắt hồ sơ bệnh nền')
-    }
+    chat.sendMessage(toSend, specialtyId, lang, suggestionId)
   }
 
   function handleNewChat() {
@@ -262,8 +236,6 @@ function AppContent() {
         onStop={chat.stopResponding}
         specialtyId={specialtyId}
         onSpecialtyChange={handleSpecialtyChange}
-        useHealthProfile={useHealthProfile}
-        onToggleHealthProfile={handleToggleHealthProfile}
         onOpenMenu={() => setMobileOpen(true)}
         lang={lang}
         onToggleLang={handleToggleLang}

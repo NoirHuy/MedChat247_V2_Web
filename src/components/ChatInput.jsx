@@ -12,8 +12,6 @@ export default function ChatInput({
   isResponding,
   specialtyId,
   onSpecialtyChange,
-  useHealthProfile = true,
-  onToggleHealthProfile,
   lang = 'vi',
   isWelcome = false,
 }) {
@@ -98,20 +96,6 @@ export default function ChatInput({
           </button>
         )}
       </div>
-      {isNutrition && onToggleHealthProfile && (
-        <label className="chat-input__profile-toggle">
-          <input
-            type="checkbox"
-            checked={useHealthProfile}
-            onChange={(e) => onToggleHealthProfile(e.target.checked)}
-          />
-          <span>
-            {isEn
-              ? 'Evaluate according to my health profile (uncheck to consult for someone else)'
-              : 'Đánh giá theo hồ sơ bệnh nền của tôi (bỏ chọn để tư vấn giúp người khác)'}
-          </span>
-        </label>
-      )}
       <p className="chat-input__hint">
         {isEn
           ? "MedChat247 may provide inaccurate information. This is not official medical advice — consult a physician when necessary."
