@@ -23,4 +23,4 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -sf http://127.0.0.1:5000/api/health || exit 1
 
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--preload", "--workers", "2", "--threads", "4", "--timeout", "120", "--bind", "0.0.0.0:5000", "app:app"]

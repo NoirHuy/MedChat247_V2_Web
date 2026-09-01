@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from neo4j import Driver, GraphDatabase
 from neo4j.exceptions import Neo4jError
@@ -34,10 +34,10 @@ class Neo4jClient:
 
     def __init__(
         self,
-        uri: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-        database: Optional[str] = None,
+        uri: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
+        database: str | None = None,
     ):
         """
         Khởi tạo kết nối driver Neo4j.
@@ -148,15 +148,15 @@ class Neo4jClient:
             return False
 
     def execute_query(
-        self, query: str, params: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Thực thi câu truy vấn Cypher trong session (database NEO4J_DATABASE) và trả về danh sách dict records."""
         with self.driver.session(database=self.database) as session:
             result = session.run(query, params or {})
             return [record.data() for record in result]
 
     def execute_write(
-        self, query: str, params: Optional[Dict[str, Any]] = None
+        self, query: str, params: dict[str, Any] | None = None
     ) -> Any:
         """Thực thi câu lệnh ghi (CREATE/MERGE/SET) trong transaction."""
         def _tx(tx):
@@ -168,8 +168,8 @@ class Neo4jClient:
 
     def execute_write_batch(
         self,
-        query_or_queries: Union[str, List[Any]],
-        batch: Optional[List[Dict[str, Any]]] = None,
+        query_or_queries: str | list[Any],
+        batch: list[dict[str, Any]] | None = None,
     ) -> Any:
         """
         Thực thi batch write trong transaction. Hỗ trợ cả 2 định dạng:
@@ -203,7 +203,7 @@ class Neo4jClient:
         if self.driver:
             self.driver.close()
 
-    def __enter__(self) -> "Neo4jClient":
+    def __enter__(self) -> Neo4jClient:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

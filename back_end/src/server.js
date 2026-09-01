@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { env } from './config/env.js'
-import { connectDatabase } from './db/mongodb.js'
+import { connectDatabase, closeDatabase } from './db/mongodb.js'
 import { connectRedis, disconnectRedis } from './config/redis.js'
 import authRoutes from './routes/auth.routes.js'
 import accountRoutes from './routes/account.routes.js'
@@ -29,13 +29,42 @@ connectRedis().catch((err) => {
   console.warn(`[startup] Redis initialization error: ${err.message}`)
 })
 
-// Ensure Redis is closed on shutdown
-const shutdown = async () => {
-  await disconnectRedis()
-  process.exit(0)
+// ─── Graceful shutdown: stop accepting connections, then close Redis + Mongo ──
+let httpServer = null
+let isShuttingDown = false
+
+async function shutdown(signal) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  console.log(`[shutdown] ${signal} received — closing server...`)
+  const forceExitTimer = setTimeout(() => {
+    console.error('[shutdown] Timed out waiting for connections to close; forcing exit.')
+    process.exit(1)
+  }, 10000)
+  try {
+    if (httpServer) {
+      await new Promise((resolve) => httpServer.close(resolve))
+    }
+    await disconnectRedis()
+    await closeDatabase()
+    clearTimeout(forceExitTimer)
+    console.log('[shutdown] Clean exit.')
+    process.exit(0)
+  } catch (err) {
+    console.error('[shutdown] Error during shutdown:', err)
+    process.exit(1)
+  }
 }
-process.on('SIGINT', shutdown)
-process.on('SIGTERM', shutdown)
+
+process.on('SIGINT', () => shutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('unhandledRejection', (reason) => {
+  console.error('[process] Unhandled promise rejection:', reason)
+})
+process.on('uncaughtException', (err) => {
+  console.error('[process] Uncaught exception:', err)
+  shutdown('uncaughtException').catch(() => process.exit(1))
+})
 
 const app = express()
 
@@ -119,7 +148,7 @@ async function warmSymptomVectorIndex() {
   console.error('[startup] Symptom vector index warm-up failed after retries:', lastError?.message)
 }
 
-app.listen(env.port, '0.0.0.0', () => {
+httpServer = app.listen(env.port, '0.0.0.0', () => {
   console.log(`MedChat247 backend listening on http://0.0.0.0:${env.port}`)
   startBillingScheduler()
 

@@ -117,10 +117,10 @@ export default function NutritionCard({ data, onSend }) {
         </div>
       )}
 
-      {/* ── 5. GHI CHÚ CHUYÊN MÔN (TỪ LLM) ── */}
+      {/* ── 5. LỜI KHUYÊN (TỪ LLM) ── */}
       {llmNote && (
         <div className="nc__note">
-          <div className="nc__note-title">Ghi chú chuyên môn:</div>
+          <div className="nc__note-title">Lời Khuyên:</div>
           <div className="nc__note-body">{llmNote}</div>
         </div>
       )}

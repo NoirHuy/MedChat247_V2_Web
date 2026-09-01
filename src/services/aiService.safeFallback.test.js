@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { streamAssistantReply } from '../aiService.js'
+import { streamAssistantReply } from './aiService.js'
 
 describe('streamAssistantReply', () => {
   it('returns a safe fallback message when the backend is unreachable', async () => {

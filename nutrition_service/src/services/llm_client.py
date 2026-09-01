@@ -11,7 +11,7 @@ hoặc lỗi kết nối, client tự động chuyển sang cơ chế Fallback a
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.core.constants import MAX_CHAT_HISTORY_TURNS, STATUS_EMOJI, STATUS_VI_LABELS
 from src.core.settings import get_settings
@@ -30,11 +30,11 @@ class LLMClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-        model: Optional[str] = None,
-        timeout: Optional[float] = None,
-        temperature: Optional[float] = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout: float | None = None,
+        temperature: float | None = None,
     ):
         settings = get_settings()
         self.base_url = (base_url or settings.llm.base_url).strip()
@@ -80,7 +80,7 @@ class LLMClient:
             "4. Nêu rõ các món ăn thay thế an toàn nếu món người dùng hỏi thuộc diện cảnh báo."
         )
 
-    def build_clinical_context(self, clinical_data: Dict[str, Any]) -> str:
+    def build_clinical_context(self, clinical_data: dict[str, Any]) -> str:
         """Chuyển đổi dữ liệu lâm sàng thành bối cảnh y tế chi tiết cho LLM (100% tiếng Việt)."""
         if not clinical_data:
             return "Không có dữ liệu món ăn cụ thể."
@@ -130,9 +130,9 @@ class LLMClient:
     def generate_clinical_consultation(
         self,
         user_message: str,
-        clinical_data: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[str]] = None,
-        chat_history: Optional[List[Dict[str, str]]] = None,
+        clinical_data: dict[str, Any] | None = None,
+        conditions: list[str] | None = None,
+        chat_history: list[dict[str, str]] | None = None,
     ) -> str:
         """Gửi yêu cầu tới LLM để sinh câu trả lời tư vấn dinh dưỡng chuẩn xác."""
         system_prompt = self.build_system_prompt()
@@ -145,7 +145,7 @@ class LLMClient:
             f"Hãy đưa ra lời tư vấn ân cần, giải thích cơ chế và hướng dẫn người dùng dựa trên bối cảnh y tế trên."
         )
 
-        messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
         if chat_history:
             messages.extend(chat_history[-MAX_CHAT_HISTORY_TURNS:])
         messages.append({"role": "user", "content": user_content})
@@ -170,7 +170,7 @@ class LLMClient:
     def _generate_fallback_response(
         self,
         user_message: str,
-        clinical_data: Optional[Dict[str, Any]] = None,
+        clinical_data: dict[str, Any] | None = None,
     ) -> str:
         """Tạo phản hồi chuẩn y khoa định dạng Markdown khi LLM không phản hồi."""
         if not clinical_data:

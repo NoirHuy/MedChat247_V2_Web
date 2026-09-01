@@ -33,6 +33,9 @@ ENV/
 # Backend's JSON-file mock database (runtime data, not source)
 back_end/data/
 
+# MongoDB dumps written by the db-backup compose service — never commit
+backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

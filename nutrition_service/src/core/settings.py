@@ -7,7 +7,6 @@ Chỉ nạp .env một lần, KHÔNG ghi đè biến môi trường đã tồn t
 import os
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Tuple
 
 from dotenv import load_dotenv
 
@@ -63,11 +62,11 @@ class Settings:
     neo4j_user: str
     neo4j_password: str
     neo4j_password_configured: bool
-    cors_origins: Tuple[str, ...]
+    cors_origins: tuple[str, ...]
     nutrition_port: int
 
 
-def _parse_cors_origins() -> Tuple[str, ...]:
+def _parse_cors_origins() -> tuple[str, ...]:
     """Danh sách origin được phép gọi API. Mặc định chỉ cho phép dev frontend."""
     raw = os.getenv("CORS_ORIGINS", "")
     origins = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]

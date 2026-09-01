@@ -35,7 +35,7 @@ export async function callLLM({
     headers: {
       'Authorization': `Bearer ${env.llmApiKey}`,
       'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost:4000',
+      'HTTP-Referer': env.clientOrigin,
       'X-Title': 'MedChat247'
     },
     body: JSON.stringify({

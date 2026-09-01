@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -47,7 +47,7 @@ RECOVERY_NUTRIENT_MAP = {
 }
 
 # Bản đồ axit béo nhận diện qua chuỗi con trong tên nutrient
-FATTY_ACID_MAP: List[Tuple[str, Tuple[str, str, str, str]]] = [
+FATTY_ACID_MAP: list[tuple[str, tuple[str, str, str, str]]] = [
     ("C16:0", ("nutrient_acid_palmitic", "Acid Palmitic (C16:0)", "c16_0_g", "g")),
     ("C18:0", ("nutrient_acid_stearic", "Acid Stearic (C18:0)", "c18_0_g", "g")),
     ("C18:1", ("nutrient_acid_oleic", "Acid Oleic (C18:1)", "c18_1_g", "g")),
@@ -56,7 +56,7 @@ FATTY_ACID_MAP: List[Tuple[str, Tuple[str, str, str, str]]] = [
 ]
 
 # Hiệu chỉnh cholesterol bị trôi/sai cho một số món lẩu & món xào (đơn vị mg)
-CHOLESTEROL_CORRECTIONS: Dict[str, float] = {
+CHOLESTEROL_CORRECTIONS: dict[str, float] = {
     "food_lau_cua_thit_bo": 352.8,
     "food_lau_ga": 293.0,
     "food_lau_ech": 250.0,
@@ -66,7 +66,7 @@ CHOLESTEROL_CORRECTIONS: Dict[str, float] = {
 }
 
 # Các giá trị outlier đã thẩm định lại thủ công: (food_id, nutrient_id, giá trị đúng)
-POINT_CORRECTIONS: Tuple[Tuple[str, str, float], ...] = (
+POINT_CORRECTIONS: tuple[tuple[str, str, float], ...] = (
     ("food_com_suat_van_phong_thit_nac_vai_su_hao", "nutrient_kem", 5.1),
     ("food_banh_bot_loc", "nutrient_sat", 1.74),
 )
@@ -105,7 +105,7 @@ def clean_vietnam_food_nutrition(
     return df
 
 
-def _resolve_recovered_nutrient(nutr: str) -> Optional[Tuple[str, str, str, str]]:
+def _resolve_recovered_nutrient(nutr: str) -> tuple[str, str, str, str] | None:
     """Áp xạ tên nutrient ghi sai/thiếu sang (nutrient_id, nutrient_name, property_name, unit)."""
     for aliases, resolved in RECOVERY_NUTRIENT_MAP.items():
         if nutr in aliases:
@@ -116,9 +116,9 @@ def _resolve_recovered_nutrient(nutr: str) -> Optional[Tuple[str, str, str, str]
     return None
 
 
-def _recover_unmapped_rels(unmapped_df: pd.DataFrame, dish_to_id: Dict[str, Any]) -> pd.DataFrame:
+def _recover_unmapped_rels(unmapped_df: pd.DataFrame, dish_to_id: dict[str, Any]) -> pd.DataFrame:
     """Khôi phục các dòng quan hệ dinh dưỡng bị loại nhầm trong sheet Removed_Unmapped."""
-    recovered_rows: List[Dict[str, Any]] = []
+    recovered_rows: list[dict[str, Any]] = []
     for _, row in unmapped_df.iterrows():
         dish = str(row["dish_name_guess"]).strip()
         nutr = str(row["nutrient"]).strip()
@@ -255,7 +255,7 @@ def clean_mon_an_and_rels(
     out_nodes_csv: str = os.path.join(PROCESSED_DIR, "food_nodes_cleaned.csv"),
     out_rels_csv: str = os.path.join(PROCESSED_DIR, "food_nutrient_rels_cleaned.csv"),
     out_excel: str = os.path.join(PROCESSED_DIR, "mon_an_neo4j_ready_cleaned.xlsx"),
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Làm sạch dataset món ăn: khôi phục quan hệ, sửa outlier, điền năng lượng Atwater."""
     logger.info("Đang đọc và xử lý món ăn: '%s'...", excel_path)
     xl = pd.ExcelFile(excel_path)
@@ -264,7 +264,7 @@ def clean_mon_an_and_rels(
     unmapped_df = xl.parse("Removed_Unmapped")
     guide_df = xl.parse("Neo4j_Import_Guide") if "Neo4j_Import_Guide" in xl.sheet_names else pd.DataFrame()
 
-    dish_to_id = dict(zip(nodes_df["food_name"], nodes_df["food_id"]))
+    dish_to_id = dict(zip(nodes_df["food_name"], nodes_df["food_id"], strict=False))
 
     # 1. Khôi phục các dòng trong Removed_Unmapped
     recovered_df = _recover_unmapped_rels(unmapped_df, dish_to_id)

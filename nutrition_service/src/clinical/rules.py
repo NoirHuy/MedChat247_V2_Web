@@ -13,7 +13,8 @@ Toàn bộ ngưỡng định lượng được trung tâm hoá trong src/core/co
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import pandas as pd
 
@@ -24,8 +25,8 @@ from src.core.constants import (
     HIGH_PURINE_KEYWORDS,
     INGREDIENT_THRESHOLDS,
     LEGACY_CONDITION_ALIASES,
-    SafetyStatus,
     SWEET_DISH_KEYWORDS,
+    SafetyStatus,
 )
 
 __all__ = [
@@ -35,11 +36,11 @@ __all__ = [
     "ChronicDiseaseEvaluator",
 ]
 
-Evaluation = Dict[str, Any]
-ConditionResult = Dict[str, Any]
+Evaluation = dict[str, Any]
+ConditionResult = dict[str, Any]
 
 
-def _get_val(row: Any, col: str) -> Optional[float]:
+def _get_val(row: Any, col: str) -> float | None:
     """Trích xuất giá trị số an toàn, trả về None nếu khuyết dữ liệu (NaN/None)."""
     if col not in row:
         return None
@@ -52,18 +53,18 @@ def _get_val(row: Any, col: str) -> Optional[float]:
         return None
 
 
-def _has_keyword(name_lower: str, keywords: List[str]) -> bool:
+def _has_keyword(name_lower: str, keywords: list[str]) -> bool:
     return any(kw in name_lower for kw in keywords)
 
 
-def normalize_conditions(conditions: Optional[List[str]]) -> List[str]:
+def normalize_conditions(conditions: list[str] | None) -> list[str]:
     """Chuẩn hoá danh sách bệnh: ánh xạ mã cũ (CKD) và dùng danh sách mặc định nếu rỗng."""
     if not conditions:
         return list(DEFAULT_CONDITIONS)
     return [LEGACY_CONDITION_ALIASES.get(c, c) for c in conditions]
 
 
-def aggregate_overall_status(results: Dict[str, ConditionResult]) -> str:
+def aggregate_overall_status(results: dict[str, ConditionResult]) -> str:
     """Tổng hợp mức độ nghiêm trọng: AVOID > MODERATE > SAFE."""
     statuses = {v.get("status") for v in results.values()}
     if SafetyStatus.AVOID in statuses:
@@ -84,7 +85,7 @@ class ChronicDiseaseEvaluator:
         carb = _get_val(dish_row, "carbohydrate_g")
         fiber = _get_val(dish_row, "fiber_g")
 
-        reasons: List[str] = []
+        reasons: list[str] = []
         status = SafetyStatus.SAFE
         is_sweet = _has_keyword(food_name, SWEET_DISH_KEYWORDS)
 
@@ -429,7 +430,7 @@ class ChronicDiseaseEvaluator:
 
     # ── Bảng điều phối: mã bệnh -> hàm đánh giá tương ứng ────────────────────
 
-    _DISH_EVALUATORS: Dict[str, Callable[[Any, str], ConditionResult]] = {
+    _DISH_EVALUATORS: dict[str, Callable[[Any, str], ConditionResult]] = {
         "DIABETES": _diabetes_dish,
         "HYPERTENSION": _hypertension_dish,
         "GOUT": _gout_dish,
@@ -438,7 +439,7 @@ class ChronicDiseaseEvaluator:
         "DYSLIPIDEMIA": _dyslipidemia_dish,
     }
 
-    _INGREDIENT_EVALUATORS: Dict[str, Callable[[Any, str, str], ConditionResult]] = {
+    _INGREDIENT_EVALUATORS: dict[str, Callable[[Any, str, str], ConditionResult]] = {
         "DIABETES": _diabetes_ingredient,
         "HYPERTENSION": _hypertension_ingredient,
         "GOUT": _gout_ingredient,
@@ -448,7 +449,7 @@ class ChronicDiseaseEvaluator:
     }
 
     @staticmethod
-    def evaluate_dish(dish_row: Any, conditions: Optional[List[str]] = None) -> Evaluation:
+    def evaluate_dish(dish_row: Any, conditions: list[str] | None = None) -> Evaluation:
         """
         Đánh giá độ an toàn của 1 món ăn thành phẩm (Food_Node) đối với danh sách bệnh mạn tính.
         Trả về dict đánh giá cho từng bệnh và tổng kết: SAFE, MODERATE, AVOID.
@@ -456,7 +457,7 @@ class ChronicDiseaseEvaluator:
         mapped_conditions = normalize_conditions(conditions)
         food_name = str(dish_row.get("food_name", "")).strip().lower()
 
-        results: Dict[str, ConditionResult] = {}
+        results: dict[str, ConditionResult] = {}
         for cond in mapped_conditions:
             evaluator = ChronicDiseaseEvaluator._DISH_EVALUATORS.get(cond)
             if evaluator is not None:
@@ -468,7 +469,7 @@ class ChronicDiseaseEvaluator:
         }
 
     @staticmethod
-    def evaluate_ingredient(ing_row: Any, conditions: Optional[List[str]] = None) -> Evaluation:
+    def evaluate_ingredient(ing_row: Any, conditions: list[str] | None = None) -> Evaluation:
         """
         Đánh giá độ an toàn của 1 nguyên liệu thực phẩm (vietnam_food_nutrition) theo 100g.
         """
@@ -476,7 +477,7 @@ class ChronicDiseaseEvaluator:
         ing_name = str(ing_row.get("ingredient_name", "")).lower()
         category = str(ing_row.get("category", "")).lower()
 
-        results: Dict[str, ConditionResult] = {}
+        results: dict[str, ConditionResult] = {}
         for cond in mapped_conditions:
             evaluator = ChronicDiseaseEvaluator._INGREDIENT_EVALUATORS.get(cond)
             if evaluator is not None:

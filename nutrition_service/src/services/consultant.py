@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -97,7 +97,7 @@ class NutritionConsultant:
             ]
         return matched
 
-    def consult_dish(self, dish_query: str, conditions: Optional[List[str]] = None) -> Dict[str, Any]:
+    def consult_dish(self, dish_query: str, conditions: list[str] | None = None) -> dict[str, Any]:
         """
         Tra cứu và tư vấn dinh dưỡng chi tiết cho 1 món ăn dựa trên danh sách bệnh lý của người dùng.
         """
@@ -112,7 +112,7 @@ class NutritionConsultant:
         fid = dish_row["food_id"]
         nutrients = self.rels_df[self.rels_df["food_id"] == fid][["nutrient_name", "amount", "unit"]].to_dict("records")
 
-        alternatives: List[Dict[str, Any]] = []
+        alternatives: list[dict[str, Any]] = []
         if evaluation["overall_status"] in (SafetyStatus.AVOID, SafetyStatus.MODERATE):
             alternatives = self.find_healthy_alternatives(dish_row, conditions)
 
@@ -139,7 +139,7 @@ class NutritionConsultant:
             "all_nutrients": nutrients,
         })
 
-    def consult_ingredient(self, ing_query: str, conditions: Optional[List[str]] = None) -> Dict[str, Any]:
+    def consult_ingredient(self, ing_query: str, conditions: list[str] | None = None) -> dict[str, Any]:
         """
         Tra cứu và tư vấn dinh dưỡng cho 1 nguyên liệu thực phẩm (theo 100g).
         """
@@ -184,7 +184,7 @@ class NutritionConsultant:
             "all_nutrients": all_nutrients,
         })
 
-    def consult_any(self, query: str, conditions: Optional[List[str]] = None) -> Dict[str, Any]:
+    def consult_any(self, query: str, conditions: list[str] | None = None) -> dict[str, Any]:
         """Tra cứu tổng quát: ưu tiên món ăn, nếu không tìm thấy thì tra nguyên liệu."""
         report = self.consult_dish(query, conditions=conditions)
         if "error" in report:
@@ -192,8 +192,8 @@ class NutritionConsultant:
         return report
 
     def find_healthy_alternatives(
-        self, target_dish: Any, conditions: Optional[List[str]] = None, top_k: int = 3
-    ) -> List[Dict[str, Any]]:
+        self, target_dish: Any, conditions: list[str] | None = None, top_k: int = 3
+    ) -> list[dict[str, Any]]:
         """
         Tìm món ăn thay thế an toàn: cùng phân nhóm (category), có status SAFE đối với bệnh của user.
         """
@@ -205,7 +205,7 @@ class NutritionConsultant:
         if candidates.empty:
             candidates = self.dishes_df[self.dishes_df["food_name"] != target_name]
 
-        safe_alternatives: List[Dict[str, Any]] = []
+        safe_alternatives: list[dict[str, Any]] = []
         for _, row in candidates.iterrows():
             eval_res = ChronicDiseaseEvaluator.evaluate_dish(row, conditions)
             if eval_res["overall_status"] != SafetyStatus.SAFE:
@@ -229,15 +229,15 @@ class NutritionConsultant:
 
     # ── Chat tự nhiên ─────────────────────────────────────────────────────────
 
-    def extract_conditions_from_text(self, text: str) -> List[str]:
+    def extract_conditions_from_text(self, text: str) -> list[str]:
         """Trích xuất tự động các bệnh lý mạn tính từ câu thoại người dùng."""
         return extract_conditions_from_text(text)
 
-    def find_food_in_text(self, text: str) -> Optional[Dict[str, str]]:
+    def find_food_in_text(self, text: str) -> dict[str, str] | None:
         """Tìm món ăn/nguyên liệu trong câu hỏi tự nhiên (ủy quyền cho FoodMatcher)."""
         return self.matcher.find_food_in_text(text)
 
-    def chat(self, user_message: str, active_conditions: Optional[List[str]] = None) -> Dict[str, Any]:
+    def chat(self, user_message: str, active_conditions: list[str] | None = None) -> dict[str, Any]:
         """
         Xử lý tin nhắn người dùng và trả về phản hồi chuẩn y khoa kết hợp Real LLM.
         Xử lý thông minh cả câu hỏi về món ăn lẫn câu hỏi ngoại lệ/tổng quát.
@@ -302,7 +302,7 @@ class NutritionConsultant:
         })
 
 
-def print_consultation_report(report: Dict[str, Any]) -> None:
+def print_consultation_report(report: dict[str, Any]) -> None:
     """Hàm in báo cáo tư vấn ra terminal hỗ trợ debug."""
     if "error" in report:
         print(f"❌ {report['error']}")

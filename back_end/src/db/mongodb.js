@@ -10,3 +10,9 @@ export async function connectDatabase() {
     process.exit(1)
   }
 }
+
+export async function closeDatabase() {
+  if (mongoose.connection.readyState === 0) return
+  await mongoose.connection.close()
+  console.log('MongoDB connection closed.')
+}

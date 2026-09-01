@@ -1,8 +1,24 @@
 node_modules
 dist
+dist-ssr
 .git
+.github
+# Secrets — **/.env also covers back_end/.env which would otherwise be
+# baked into the image by `COPY . .` (nested .dockerignore files do not
+# apply to the root build context).
 .env
 .env.local
+**/.env
+**/.env.local
 *.local
+coverage
+**/coverage
+**/__pycache__
+.pytest_cache
+# Runtime MongoDB dumps — never bake into an image
+backups
+# Docs and local reports are not needed inside the image
+docs
+*.md
 # Built separately by the `nutrition` service (its own build context)
 nutrition_service

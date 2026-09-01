@@ -1,0 +1,60 @@
+.error-boundary {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-app);
+  color: var(--text-primary);
+}
+
+.error-boundary__card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 32px;
+  text-align: center;
+}
+
+.error-boundary__card h1 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+
+.error-boundary__card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.error-boundary__detail {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  max-height: 96px;
+  overflow: auto;
+  margin: 0 0 20px;
+}
+
+.error-boundary__reload {
+  background: var(--bg-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-boundary__reload:hover {
+  filter: brightness(1.05);
+}

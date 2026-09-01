@@ -205,7 +205,7 @@
   font-weight: 500;
 }
 
-/* ── 5. Ghi chú chuyên môn (từ LLM) ── */
+/* ── 5. Lời khuyên (từ LLM) ── */
 .nc__note {
   background: #f0f9ff;
   border-left: 3px solid #0284c7;

@@ -32,10 +32,10 @@ Bảng thông tin chi tiết các phân hệ dịch vụ (thông tin xác thực
 |---|---|---|---|
 | 🌐 **Ứng Dụng Web Client** | `https://<your-domain>` | `http://localhost:8080` | React 19 SPA, Responsive Glassmorphism, Đa ngôn ngữ (VI/EN) |
 | 📊 **Trang Quản Trị (Admin)** | `https://<your-domain>/admin` | `http://localhost:8080/admin` | Giám sát vận hành, theo dõi doanh thu, thống kê token |
-| 🔀 **9Router AI Gateway** | `http://<vps-ip>:20128` | `http://localhost:20128` | Quản trị API Key, Load Balancing & Failover |
-| ⚡ **Backend API** | `http://<vps-ip>:4000` | `http://localhost:4000` | Node.js Express, JWT Auth, MongoDB & PayPal Payment |
-| 🥗 **Nutrition Service** | internal (không expose) | `http://localhost:5000` | Python Flask tư vấn dinh dưỡng, Neo4j database `nutrition` |
-| 🌐 **Neo4j Knowledge Graph** | Xem dashboard Neo4j Aura | `neo4j+s://...databases.neo4j.io` | Tri thức y khoa SymCAT (474 triệu triệu chứng, 801 bệnh lý) |
+| 🔀 **9Router AI Gateway** | localhost-only (`127.0.0.1:20128`, truy cập qua SSH tunnel) | `http://localhost:20128` | Quản trị API Key, Load Balancing & Failover — không expose ra internet vì chứa LLM API key |
+| ⚡ **Backend API** | localhost-only (Caddy proxy `/api/*` → `backend:4000`) | `http://localhost:4000` | Node.js Express, JWT Auth, MongoDB & PayPal Payment |
+| 🥗 **Nutrition Service** | internal (không expose) | `http://localhost:5000` | Python Flask (gunicorn) tư vấn dinh dưỡng, Neo4j database `nutrition` |
+| 🌐 **Neo4j Knowledge Graph** | localhost-only (`127.0.0.1:7474` browser / `7687` bolt) | `neo4j+s://...` nếu dùng AuraDB | Tri thức y khoa SymCAT (474 triệu triệu chứng, 801 bệnh lý) — container `neo4j:5.18-community` |
 
 > **Lưu ý:** Thông tin xác thực (password, API key, secret) được cấu hình trong file `.env`. Không lưu credentials trong code hoặc tài liệu công khai.
 
@@ -47,7 +47,7 @@ Hệ thống được thiết kế và vận hành trên môi trường **Cloud 
 
 * **Tự Động Cấp & Gia Hạn SSL Qua Caddy Container (Caddy Auto-HTTPS)**: Tích hợp Caddy Server Container làm Reverse Proxy cao cấp, tự động đăng ký, xác thực ACME và gia hạn chứng chỉ mã hóa an toàn **HTTPS SSL (Let's Encrypt / ZeroSSL)** hoàn toàn tự động 100%.
 * **Đóng Gói Container Khối (Docker Compose Architecture)**: Các dịch vụ cốt lõi (Caddy Reverse Proxy, Frontend, Backend, MongoDB 7.0 và 9Router AI Gateway) được container hóa cô lập, quản lý và sẵn sàng khởi chạy đồng bộ với 1 lệnh duy nhất.
-* **Độ Ổn Định & Khả Năng Mở Rộng**: Cơ sở dữ liệu MongoDB 7.0 và Neo4j AuraDB Cloud đảm bảo tối ưu hóa phần cứng, hoạt động liên tục 24/7 không đứt gãy.
+* **Độ Ổn Định & Khả Năng Mở Rộng**: Cơ sở dữ liệu MongoDB 8.0 (container kèm service backup hằng ngày) và Neo4j 5.18 đảm bảo tối ưu hóa phần cứng, hoạt động liên tục 24/7 không đứt gạt.
 
 ---
 
@@ -168,7 +168,13 @@ docker compose logs -f backend
 # Backend (cổng 4000):
 cd back_end && npm install
 npm run dev          # node --watch src/server.js
+npm run lint         # oxlint
 npm test             # vitest run (unit tests)
+
+# Nutrition service (Python, cổng 5000):
+cd nutrition_service && pip install -r requirements.txt -r requirements-dev.txt
+ruff check .         # lint
+pytest               # unit tests
 
 # Frontend (cổng 5173, proxy /api -> localhost:4000):
 npm install
@@ -180,6 +186,12 @@ npm run build        # production bundle -> dist/
 
 > Lưu ý: ở môi trường dev, Vite tự động proxy `/api/*` tới `http://localhost:4000`
 > (coi `vite.config.js`). Nếu cần trỏ sang backend khác, đặt `VITE_API_URL` trong `.env`.
+
+### 8.4. CI (GitHub Actions)
+
+`.github/workflows/ci.yml` chạy 3 job trên mỗi push/PR: **frontend** (oxlint → vitest → build),
+**backend** (oxlint → vitest) và **nutrition** (ruff → pytest). File này cần được commit và
+push lên GitHub để pipeline kích hoạt.
 
 ---
 

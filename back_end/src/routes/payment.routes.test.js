@@ -25,7 +25,7 @@ vi.mock('../services/paypalClient.js', () => ({
   createPayPalOrder: vi.fn(),
   capturePayPalOrder: mocks.capturePayPalOrder,
 }))
-vi.mock('../utils/paypal-webhook.util.js', () => ({
+vi.mock('../utils/paypalWebhook.js', () => ({
   verifyPayPalWebhookSignature: mocks.verifyWebhook,
   parsePayPalCustom: (value) => {
     if (!value) return {}

@@ -1,0 +1,11 @@
+# Normalize line endings: LF everywhere in the repo, LF in the working tree
+# for scripts consumed inside Linux containers (Docker builds break with CRLF).
+* text=auto
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.xlsx binary
+*.gz binary

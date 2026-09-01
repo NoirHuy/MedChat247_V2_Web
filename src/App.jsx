@@ -219,8 +219,6 @@ function AppContent() {
         onStop={chat.stopResponding}
         specialtyId={specialtyId}
         onSpecialtyChange={handleSpecialtyChange}
-        selectedConditions={chat.nutritionConditions}
-        onToggleCondition={chat.toggleNutritionCondition}
         onOpenMenu={() => setMobileOpen(true)}
         lang={lang}
         onToggleLang={handleToggleLang}

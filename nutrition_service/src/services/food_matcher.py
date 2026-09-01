@@ -9,7 +9,7 @@ Tách riêng khỏi NutritionConsultant để dễ kiểm thử và tái sử d�
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -94,7 +94,7 @@ _STOPWORD_PATTERNS = [
 _META_COMPILED = [re.compile(p, re.IGNORECASE) for p in META_PATTERNS]
 
 
-def _boundary_pattern(text: str) -> "re.Pattern[str]":
+def _boundary_pattern(text: str) -> re.Pattern[str]:
     """Regex khớp `text` trọn vẹn theo ranh giới từ (dùng ở cả 2 chiều tra cứu)."""
     return re.compile(r"(?i)(?:\b|^)" + re.escape(text) + r"(?:\b|$)")
 
@@ -115,7 +115,7 @@ def categorize_dish(food_name: str) -> str:
     return "MON_BANH_KHAC"
 
 
-def extract_conditions_from_text(text: str) -> List[str]:
+def extract_conditions_from_text(text: str) -> list[str]:
     """Trích xuất tự động các bệnh lý mạn tính từ câu thoại người dùng."""
     text_lower = text.lower()
     found = set()
@@ -129,19 +129,19 @@ class FoodMatcher:
     """Matcher 3 tầng (exact → word-boundary → n-gram) trên danh mục món ăn & nguyên liệu."""
 
     def __init__(self, dishes_df: pd.DataFrame, ingredients_df: pd.DataFrame):
-        self._dish_names: List[Tuple[str, str]] = self._build_name_index(dishes_df, "food_name")
-        self._ingredient_names: List[Tuple[str, str]] = self._build_name_index(ingredients_df, "ingredient_name")
+        self._dish_names: list[tuple[str, str]] = self._build_name_index(dishes_df, "food_name")
+        self._ingredient_names: list[tuple[str, str]] = self._build_name_index(ingredients_df, "ingredient_name")
         # Precompile sẵn regex ranh giới từ cho toàn bộ tên (tránh re-compile mỗi lần gọi matcher)
-        self._dish_patterns: List[Tuple[re.Pattern[str], str]] = [
+        self._dish_patterns: list[tuple[re.Pattern[str], str]] = [
             (_boundary_pattern(lower), orig) for lower, orig in self._dish_names
         ]
-        self._ingredient_patterns: List[Tuple[re.Pattern[str], str]] = [
+        self._ingredient_patterns: list[tuple[re.Pattern[str], str]] = [
             (_boundary_pattern(lower), orig) for lower, orig in self._ingredient_names
         ]
         self._condition_keywords_sorted = sorted(ALL_CONDITION_KEYWORDS, key=len, reverse=True)
 
     @staticmethod
-    def _build_name_index(df: pd.DataFrame, col: str) -> List[Tuple[str, str]]:
+    def _build_name_index(df: pd.DataFrame, col: str) -> list[tuple[str, str]]:
         """Danh sách (tên_thường, tên_gốc) đã chuẩn hoá sẵn để tra cứu nhanh."""
         if col not in df.columns:
             return []
@@ -171,7 +171,7 @@ class FoodMatcher:
 
     # ── Matching 3 tầng ───────────────────────────────────────────────────────
 
-    def find_food_in_text(self, text: str) -> Optional[Dict[str, str]]:
+    def find_food_in_text(self, text: str) -> dict[str, str] | None:
         """
         Tìm món ăn hoặc nguyên liệu thông minh (Multi-tier Smart Matching)
         từ câu hỏi tự nhiên của người dùng. Trả về None nếu là câu hỏi meta/ngoài luồng.
@@ -202,9 +202,9 @@ class FoodMatcher:
 
         return self._match_ngram(cleaned)
 
-    def _match_word_boundary(self, raw_lower: str, cleaned: str) -> Optional[Dict[str, str]]:
+    def _match_word_boundary(self, raw_lower: str, cleaned: str) -> dict[str, str] | None:
         """Tier 2: Substring matching có kiểm tra ranh giới từ (Word Boundary)."""
-        matches: List[Tuple[float, str, str]] = []
+        matches: list[tuple[float, str, str]] = []
         is_clean_single = len(cleaned.split()) == 1
         is_valid_single = cleaned in VALID_SINGLE_FOODS
         reverse_ok = (not is_clean_single or is_valid_single) and len(cleaned) >= 4
@@ -236,13 +236,13 @@ class FoodMatcher:
             return {"name": matches[0][1], "type": matches[0][2]}
         return None
 
-    def _match_ngram(self, cleaned: str) -> Optional[Dict[str, str]]:
+    def _match_ngram(self, cleaned: str) -> dict[str, str] | None:
         """Tier 3: Token / N-gram search."""
         words = [w for w in cleaned.split() if len(w) >= 2 and w not in PHRASE_STOP_TOKENS]
         if not words:
             return None
 
-        phrases: List[str] = []
+        phrases: list[str] = []
         for n in range(min(4, len(words)), 0, -1):
             for i in range(len(words) - n + 1):
                 phrases.append(" ".join(words[i:i + n]))
@@ -254,7 +254,7 @@ class FoodMatcher:
             if len(phrase) < 3:
                 continue
 
-            p_matches: List[Tuple[int, str, str]] = []
+            p_matches: list[tuple[int, str, str]] = []
             for d_lower, d_orig in self._dish_names:
                 if re.search(r"(?i)(?:\b|^)" + re.escape(phrase) + r"(?:\b|$)", d_lower):
                     p_matches.append((len(d_orig), d_orig, "dish"))

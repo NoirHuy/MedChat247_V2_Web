@@ -9,9 +9,9 @@ from src.core.constants import (
     GRAPH_WARNING_THRESHOLDS,
     LEGACY_CONDITION_ALIASES,
     MAX_CHAT_HISTORY_TURNS,
-    SafetyStatus,
     STATUS_EMOJI,
     STATUS_VI_LABELS,
+    SafetyStatus,
 )
 from src.core.settings import Settings, get_settings
 

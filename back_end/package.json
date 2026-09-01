@@ -1,11 +1,15 @@
 {
-  "name": "chat-med-backend",
+  "name": "medchat247-api",
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "lint": "oxlint --config ../.oxlintrc.json src",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -27,8 +31,9 @@
     "redis": "^4.7.1"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^3.2.7",
+    "@vitest/coverage-v8": "^4.1.11",
+    "oxlint": "^1.71.0",
     "supertest": "^7.1.0",
-    "vitest": "^3.1.4"
+    "vitest": "^4.1.11"
   }
 }

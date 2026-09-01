@@ -12,7 +12,7 @@ import { createPayPalOrder, capturePayPalOrder } from '../services/paypalClient.
 import {
   verifyPayPalWebhookSignature,
   parsePayPalCustom,
-} from '../utils/paypal-webhook.util.js'
+} from '../utils/paypalWebhook.js'
 import { auditLog } from '../utils/auditLog.js'
 import { safeSetNx } from '../config/redis.js'
 import { PRO_PLAN, PRO_DURATION_MS } from '../config/plans.js'

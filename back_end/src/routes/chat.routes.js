@@ -17,6 +17,7 @@ import { getPlan } from '../config/plans.js'
 import { ConversationModel } from '../db/conversation.model.js'
 import { SystemLogModel } from '../db/systemLog.model.js'
 import { runMemoryExtractionPass } from '../services/memory/memoryExtractor.js'
+import { getChronicConditionIds } from '../services/memory/chronicConditions.js'
 
 const router = Router()
 const MAX_MESSAGES = 40
@@ -93,7 +94,11 @@ router.post(
     if (typeof specialtyId !== 'string' || !specialtyId) {
       throw new HttpError(400, 'Thiếu specialtyId.')
     }
-    // Nutrition chronic-condition pills (DIABETES, HYPERTENSION, GOUT, CKD_*, DYSLIPIDEMIA...)
+    // Nutrition chronic-condition context: the UI pills were removed —
+    // conditions now come from the Personal Memory profile (chronic_condition
+    // entries) for logged-in users, merged with any explicit request
+    // conditions. Guests fall back to the Flask engine's own in-message
+    // keyword detection (nutrition_service constants.py).
     const nutritionConditions = Array.isArray(conditions)
       ? conditions.filter((c) => typeof c === 'string' && c.trim()).slice(0, 10).map((c) => c.trim())
       : []
@@ -110,6 +115,18 @@ router.post(
       : messages
     // validateMessages đã bao phủ kiểm tra mảng rỗng / định dạng / giới hạn độ dài.
     validateMessages(chatMessages)
+
+    if (isNutritionChat && req.userId) {
+      try {
+        const memoryConditions = await getChronicConditionIds(req.userId)
+        for (const id of memoryConditions) {
+          if (!nutritionConditions.includes(id)) nutritionConditions.push(id)
+        }
+      } catch (err) {
+        // Non-fatal: nutrition still answers using in-message detection.
+        console.error('[Nutrition] Chronic-condition memory lookup failed:', err.message)
+      }
+    }
 
     const quotaReservation = await reserveChatQuota(req.userId, chatMessages)
 

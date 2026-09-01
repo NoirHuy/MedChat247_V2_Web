@@ -2,10 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createId } from '../utils/id'
 import { streamAssistantReply, fetchSmartTitle } from '../services/aiService'
 import { apiUrl } from '../services/api'
-import { DEFAULT_SPECIALTY_ID, NUTRITION_SPECIALTY_ID } from '../data/specialties'
+import { DEFAULT_SPECIALTY_ID } from '../data/specialties'
 
 const ACTIVE_CHAT_STORAGE_KEY = 'medai_active_chat_id'
-const NUTRITION_CONDITIONS_STORAGE_KEY = 'medai_nutrition_conditions'
 
 function makeConversation(specialtyId = DEFAULT_SPECIALTY_ID) {
   return {
@@ -31,14 +30,6 @@ export function useChat(account) {
   const [conversations, setConversations] = useState([])
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_CHAT_STORAGE_KEY) || null)
   const [isResponding, setIsResponding] = useState(false)
-  const [nutritionConditions, setNutritionConditions] = useState(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(NUTRITION_CONDITIONS_STORAGE_KEY) || '[]')
-      return Array.isArray(raw) ? raw : []
-    } catch {
-      return []
-    }
-  })
   const abortRef = useRef(null)
   // Mirror of the latest conversations state so async callbacks can read fresh
   // data without performing side effects inside setState updaters (which
@@ -50,17 +41,6 @@ export function useChat(account) {
 
   // Abort any in-flight stream when the hook unmounts.
   useEffect(() => () => abortRef.current?.abort(), [])
-
-  // Pills bệnh nền cho chuyên khoa Dinh dưỡng (đa chọn, lưu localStorage).
-  const toggleNutritionCondition = useCallback((conditionId) => {
-    setNutritionConditions((prev) => {
-      const next = prev.includes(conditionId)
-        ? prev.filter((c) => c !== conditionId)
-        : [...prev, conditionId]
-      localStorage.setItem(NUTRITION_CONDITIONS_STORAGE_KEY, JSON.stringify(next))
-      return next
-    })
-  }, [])
 
   // Lưu activeId vào state & localStorage (chỉ khi có id hợp lệ)
   const setActiveIdAndPersist = useCallback((id) => {
@@ -259,7 +239,6 @@ export function useChat(account) {
           isSuggestionDemo: !!suggestionId,
           suggestionId,
           conversationId: specialtyId === DEFAULT_SPECIALTY_ID ? convId : undefined,
-          conditions: specialtyId === NUTRITION_SPECIALTY_ID ? nutritionConditions : undefined,
           signal: controller.signal,
           onToken: appendToken,
         })
@@ -307,7 +286,7 @@ export function useChat(account) {
         abortRef.current = null
       }
     },
-    [activeId, activeConversation, isResponding, nutritionConditions, persistConversation, setActiveIdAndPersist],
+    [activeId, activeConversation, isResponding, persistConversation, setActiveIdAndPersist],
   )
 
   return {
@@ -321,7 +300,5 @@ export function useChat(account) {
     selectConversation,
     deleteConversation,
     setSpecialty,
-    nutritionConditions,
-    toggleNutritionCondition,
   }
 }

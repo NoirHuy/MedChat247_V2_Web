@@ -16,9 +16,9 @@ export default function WelcomeScreen({ onPick, specialtyId, lang = 'vi' }) {
       <h1 className="welcome__title">
         {isNutrition ? (
           isEn ? (
-            <>What nutrition & dietary questions can <span className="welcome__title-gradient">NutriChat</span> explore for you today?</>
+            <>What nutrition & dietary questions can <span className="welcome__title-gradient">MedChat247</span> explore for you today?</>
           ) : (
-            <>Bạn cần tư vấn dinh dưỡng & thực đơn món ăn cùng <span className="welcome__title-gradient">NutriChat</span> không?</>
+            <>Bạn cần tư vấn dinh dưỡng & thực đơn món ăn cùng <span className="welcome__title-gradient">MedChat247</span> không?</>
           )
         ) : (
           isEn ? (

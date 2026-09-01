@@ -4,14 +4,6 @@ import SpecialtyPicker from './SpecialtyPicker'
 import { SPECIALTIES, NUTRITION_SPECIALTY_ID } from '../data/specialties'
 import './ChatInput.css'
 
-const CHRONIC_CONDITIONS = [
-  { id: 'DIABETES', label: { vi: 'Tiểu đường', en: 'Diabetes' }, icon: '🩺' },
-  { id: 'HYPERTENSION', label: { vi: 'Tăng HA', en: 'Hypertension' }, icon: '🫀' },
-  { id: 'GOUT', label: { vi: 'Gout', en: 'Gout' }, icon: '🦶' },
-  { id: 'CKD_NON_DIALYSIS', label: { vi: 'Bệnh thận', en: 'Kidney Disease' }, icon: '🫘' },
-  { id: 'DYSLIPIDEMIA', label: { vi: 'Mỡ máu', en: 'Dyslipidemia' }, icon: '🩸' },
-]
-
 export default function ChatInput({
   value,
   onChange,
@@ -20,8 +12,6 @@ export default function ChatInput({
   isResponding,
   specialtyId,
   onSpecialtyChange,
-  selectedConditions = [],
-  onToggleCondition,
   lang = 'vi',
   isWelcome = false,
 }) {
@@ -47,33 +37,6 @@ export default function ChatInput({
 
   return (
     <div className={`chat-input ${isWelcome ? 'chat-input--welcome' : ''}`}>
-      {isNutrition && (
-        <div className="nutrition-conditions-bar">
-          <span className="nutrition-conditions-label">
-            🧠 {isEn ? 'Health Profile:' : 'Bệnh lý nền của bạn:'}
-          </span>
-          <div className="nutrition-conditions-pills">
-            {CHRONIC_CONDITIONS.map((c) => {
-              const active = selectedConditions.includes(c.id)
-              const name = c.label[lang] || c.label.vi
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={`condition-pill ${active ? 'condition-pill--active' : ''}`}
-                  onClick={() => onToggleCondition?.(c.id)}
-                  title={active ? (isEn ? 'Click to remove' : 'Bấm để bỏ chọn') : (isEn ? 'Click to select' : 'Bấm để chọn')}
-                >
-                  <span className="condition-pill__icon">{c.icon}</span>
-                  <span className="condition-pill__name">{name}</span>
-                  {active && <span className="condition-pill__check">✓</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="chat-input__box">
         <button
           type="button"

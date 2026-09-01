@@ -6,7 +6,6 @@ Nguồn chân lý duy nhất (single source of truth) cho toàn bộ hằng số
 - Ngưỡng vi chất lâm sàng cho món ăn / nguyên liệu / cảnh báo Knowledge Graph
 """
 
-from typing import Dict, List
 
 # ─── TRẠNG THÁI ĐÁNH GIÁ AN TOÀN ─────────────────────────────────────────────
 
@@ -21,14 +20,14 @@ class SafetyStatus:
 
 
 # Nhãn tiếng Việt hiển thị cho người dùng / LLM context
-STATUS_VI_LABELS: Dict[str, str] = {
+STATUS_VI_LABELS: dict[str, str] = {
     SafetyStatus.SAFE: "An toàn / Khuyên dùng",
     SafetyStatus.MODERATE: "Cần lưu ý / Kiểm soát khẩu phần",
     SafetyStatus.AVOID: "Nên hạn chế / Tránh dùng",
 }
 
 # Icon trạng thái dùng trong phản hồi fallback Markdown
-STATUS_EMOJI: Dict[str, str] = {
+STATUS_EMOJI: dict[str, str] = {
     SafetyStatus.SAFE: "🟢",
     SafetyStatus.MODERATE: "🟡",
     SafetyStatus.AVOID: "🔴",
@@ -36,7 +35,7 @@ STATUS_EMOJI: Dict[str, str] = {
 
 # ─── BỆNH MẠN TÍNH ────────────────────────────────────────────────────────────
 
-CHRONIC_CONDITIONS: Dict[str, Dict[str, object]] = {
+CHRONIC_CONDITIONS: dict[str, dict[str, object]] = {
     "DIABETES": {
         "name_vi": "Đái tháo đường (Tiểu đường)",
         "description": "Kiểm soát chặt đường bột (Carb), đường đơn, chỉ số GI/GL, tăng cường chất xơ.",
@@ -76,10 +75,10 @@ CHRONIC_CONDITIONS: Dict[str, Dict[str, object]] = {
 }
 
 # Ánh xạ mã bệnh cũ -> mã chuẩn
-LEGACY_CONDITION_ALIASES: Dict[str, str] = {"CKD": "CKD_NON_DIALYSIS"}
+LEGACY_CONDITION_ALIASES: dict[str, str] = {"CKD": "CKD_NON_DIALYSIS"}
 
 # Danh sách bệnh đánh giá mặc định khi người dùng không chỉ định
-DEFAULT_CONDITIONS: List[str] = [
+DEFAULT_CONDITIONS: list[str] = [
     "DIABETES",
     "HYPERTENSION",
     "GOUT",
@@ -88,7 +87,7 @@ DEFAULT_CONDITIONS: List[str] = [
 ]
 
 # Từ khóa nhận diện bệnh lý trong câu hỏi tự nhiên (single source cho cả NLP matcher)
-CONDITION_KEYWORDS_MAP: Dict[str, List[str]] = {
+CONDITION_KEYWORDS_MAP: dict[str, list[str]] = {
     "DIABETES": ["tiểu đường", "đái tháo đường", "đường huyết", "diabetes", "type 2", "đường máu"],
     "HYPERTENSION": ["huyết áp", "tăng huyết áp", "cao huyết áp", "tim mạch", "hypertension", "mạch vành"],
     "GOUT": ["gút", "gout", "acid uric", "axit uric", "sưng ngón chân", "viêm khớp gút"],
@@ -98,7 +97,7 @@ CONDITION_KEYWORDS_MAP: Dict[str, List[str]] = {
 }
 
 
-def _build_all_condition_keywords() -> List[str]:
+def _build_all_condition_keywords() -> list[str]:
     """Hợp nhất từ khóa theo bệnh + các cụm bổ sung, sắp xếp dài->ngắn để replace an toàn."""
     extra = ["bệnh gút"]  # các cụm từ lịch sử cần được loại bỏ khi làm sạch câu hỏi
     seen = set()
@@ -115,13 +114,13 @@ def _build_all_condition_keywords() -> List[str]:
     return sorted(merged, key=len, reverse=True)
 
 
-ALL_CONDITION_KEYWORDS: List[str] = _build_all_condition_keywords()
+ALL_CONDITION_KEYWORDS: list[str] = _build_all_condition_keywords()
 
 # ─── NGƯỠNG VI CHẤT LÂM SÀNG ─────────────────────────────────────────────────
 # Mọi ngưỡng định lượng tập trung tại đây; rules.py và import_data.py cùng đọc.
 
 # Ngưỡng đánh giá MÓN ĂN THÀNH PHẨM (theo 1 suất)
-DISH_THRESHOLDS: Dict[str, Dict[str, float]] = {
+DISH_THRESHOLDS: dict[str, dict[str, float]] = {
     "DIABETES": {
         "CARB_AVOID": 70.0,
         "CARB_AVOID_LOW_FIBER": 50.0,
@@ -154,7 +153,7 @@ DISH_THRESHOLDS: Dict[str, Dict[str, float]] = {
 }
 
 # Ngưỡng đánh giá NGUYÊN LIỆU THÔ (theo 100g)
-INGREDIENT_THRESHOLDS: Dict[str, Dict[str, float]] = {
+INGREDIENT_THRESHOLDS: dict[str, dict[str, float]] = {
     "DIABETES": {
         "SUGARS_AVOID": 15.0,
         "CARB_AVOID": 60.0,
@@ -186,7 +185,7 @@ INGREDIENT_THRESHOLDS: Dict[str, Dict[str, float]] = {
 }
 
 # Ngưỡng tạo cạnh cảnh báo [:CANH_BAO_CHO] trên Knowledge Graph Neo4j
-GRAPH_WARNING_THRESHOLDS: Dict[str, float] = {
+GRAPH_WARNING_THRESHOLDS: dict[str, float] = {
     "FOOD_SODIUM": 800.0,       # Natri món ăn cảnh báo HYPERTENSION + CKD_NON_DIALYSIS
     "FOOD_CHOLESTEROL": 150.0,  # Cholesterol món ăn cảnh báo DYSLIPIDEMIA
     "INGREDIENT_PURINE": 150.0, # Purine nguyên liệu cảnh báo GOUT
