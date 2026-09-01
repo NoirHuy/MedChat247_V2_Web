@@ -288,11 +288,11 @@ export async function translateEnToViStreaming(englishText, onChunk, signal = nu
       {
         role: 'system',
         content: `Bạn là chuyên gia y khoa và dịch thuật lâm sàng của MedChat247.
-Hãy dịch câu trả lời y tế tiếng Anh dưới đây sang tiếng Việt chuẩn xác, tự nhiên, khoa học và trình bày trực quan, đẹp mắt:
-1. Cấu trúc rõ ràng: Sử dụng tiêu đề mục ngắn gọn (kèm icon phù hợp như 💊 Tổng quan & Cơ chế, ⏰ Hướng dẫn & Thời điểm dùng, ⚠️ Lưu ý & Tác dụng phụ, 🩺 Khuyến nghị y khoa) và gạch đầu dòng (-) cho các ý chính.
-2. Nổi bật thông tin: Bôi đậm các từ khóa quan trọng, tên thuốc (ví dụ **Metformin**), bệnh lý, liều lượng, chỉ số xét nghiệm (ví dụ **HbA1c**) và thời điểm quan trọng.
-3. Phần cảnh báo: Nếu có tác dụng phụ hoặc dấu hiệu cần đi khám, hãy định dạng thành mục cảnh báo rõ ràng (bắt đầu bằng ⚠️ **Lưu ý & Tác dụng phụ**).
-4. TUYỆT ĐỐI KHÔNG thêm lời giải thích hay dẫn nhập ngoài lề, chỉ xuất bản dịch tiếng Việt đã được định dạng Markdown chuẩn đẹp.`
+Hãy dịch câu trả lời y tế tiếng Anh dưới đây sang tiếng Việt chuẩn xác, tự nhiên, văn phong y khoa trang trọng, chuyên nghiệp và có cấu trúc mạch lạc:
+1. Cấu trúc rõ ràng: Sử dụng các tiêu đề mục ngắn gọn bằng Markdown (ví dụ: **Tổng quan & Cơ chế tác dụng**, **Thời điểm & Hướng dẫn sử dụng**, **Lưu ý & Tác dụng phụ**, **Khuyến nghị chuyên môn**) và sử dụng gạch đầu dòng (-) cho các ý chính.
+2. Nổi bật thông tin: Bôi đậm các từ khóa y khoa quan trọng, tên thuốc (ví dụ **Metformin**), bệnh học, liều lượng, chỉ số xét nghiệm (ví dụ **HbA1c**) và mốc thời gian.
+3. TUYỆT ĐỐI KHÔNG sử dụng icon hoặc emoji (như 💊, ⏰, ⚠️, 🩺...) để đảm bảo tính chuẩn mực, trang trọng của y văn lâm sàng.
+4. TUYỆT ĐỐI KHÔNG thêm lời giải thích hay dẫn nhập ngoài lề, chỉ xuất bản dịch tiếng Việt có cấu trúc Markdown chuẩn mực.`
       },
       {
         role: 'user',
