@@ -1,5 +1,6 @@
 import { env } from '../../config/env.js'
 import { streamText } from '../llm/streaming.js'
+import { classifyQuickSubtype, streamQuickReply } from './intentClassifier.js'
 
 const NUTRITION_SPECIALTY_ID = 'nutrition_consultation'
 const NUTRITION_MARKER = '__NUTRITION_DATA__:'
@@ -137,8 +138,23 @@ async function callNutritionService({ message, conditions, history, signal }) {
   }
 }
 
-export async function streamNutritionReply({ messages, conditions, conditionsSource = 'none', conversationId = null, onChunk, signal }) {
+export async function streamNutritionReply({ messages, conditions, conditionsSource = 'none', conversationId = null, onChunk, signal, lang = 'vi' }) {
   const lastUserText = [...messages].reverse().find((m) => m.role === 'user')?.content || ''
+
+  const quickSubtype = classifyQuickSubtype(lastUserText)
+  if (quickSubtype) {
+    const fullReplyText = await streamQuickReply(lang, quickSubtype, onChunk, signal, 'nutrition_consultation')
+    return {
+      fullReplyText,
+      memoriesUsed: [],
+      performanceMeta: {
+        nutritionGateway: true,
+        quickReply: true,
+        subtype: quickSubtype,
+      },
+    }
+  }
+
   const history = buildNutritionHistory(messages)
 
   // Conditions from the request (memory profile + explicit) take precedence;

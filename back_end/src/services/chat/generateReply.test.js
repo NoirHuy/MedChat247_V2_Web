@@ -37,10 +37,19 @@ vi.mock('../llm/streaming.js', () => ({
 }))
 
 vi.mock('./intentClassifier.js', () => ({
+  classifyQuickSubtype: vi.fn((text) => {
+    if (text === 'chào bạn' || text === 'hi' || text === 'hello') return 'greeting'
+    if (text === 'bạn là ai' || text === 'bạn là model gì') return 'bot_identity'
+    return null
+  }),
   detectIntent: vi.fn(async (text) => {
     if (text === 'chào bạn') return { type: 'quick', subtype: 'greeting' }
     if (text === 'thơ lục bát') return { type: 'refusal' }
     return { type: 'symptom_query' }
+  }),
+  detectGeneralConsultationIntent: vi.fn(async (text) => {
+    if (text === 'thơ lục bát' || text === 'viết code') return { type: 'refusal' }
+    return { type: 'medical_query' }
   }),
   streamQuickReply: vi.fn(async (lang, subtype, onChunk) => {
     const text = 'Chào bạn! Tôi có thể giúp gì?'

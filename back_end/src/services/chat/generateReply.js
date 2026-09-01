@@ -10,7 +10,7 @@ import { formatAdaptiveContext } from '../graphrag/formatContext.js'
 import { evaluatePhase } from './phaseEvaluator.js'
 import { getSCEState, mergeSCEState, setSCEState } from '../graphrag/sceStateCache.js'
 import { getStaticSuggestionReply } from './staticSuggestionReplies.js'
-import { detectIntent, streamQuickReply, streamRefusalReply } from './intentClassifier.js'
+import { detectIntent, detectGeneralConsultationIntent, classifyQuickSubtype, streamQuickReply, streamRefusalReply } from './intentClassifier.js'
 import { isNutritionSpecialty, streamNutritionReply } from './nutritionGateway.js'
 
 function buildMockReply(userText, specialtyId, lang = 'vi') {
@@ -62,12 +62,43 @@ export async function generateReply({ messages, specialtyId, lang = 'vi', isSugg
   // skipped here (extraction still runs on the conversation afterwards).
   if (isNutritionSpecialty(specialtyId)) {
     return await measureStage('nutritionGatewayMs', () =>
-      streamNutritionReply({ messages, conditions, conditionsSource, conversationId, onChunk, signal }),
+      streamNutritionReply({ messages, conditions, conditionsSource, conversationId, onChunk, signal, lang }),
     )
   }
 
   // ── GENERAL CONSULTATION SPECIALTY: custom fine-tuned model (Modal vLLM) ─────
   if (specialtyId === 'general_consultation' || specialtyId === 'general') {
+    // 1. Quick-response patterns (greeting, thanks, farewell, bot_identity)
+    const quickSubtype = classifyQuickSubtype(lastUserText)
+    if (quickSubtype) {
+      const fullReplyText = await streamQuickReply(lang, quickSubtype, onChunk, signal, 'general_consultation')
+      return {
+        fullReplyText,
+        memoriesUsed: [],
+        performanceMeta: {
+          specialty: 'general_consultation',
+          quickReply: true,
+          subtype: quickSubtype,
+        }
+      }
+    }
+
+    // 2. Off-topic Guardrail check
+    const intent = await measureStage('intentClassificationMs', () =>
+      detectGeneralConsultationIntent(lastUserText, lang)
+    )
+    if (intent.type === 'refusal') {
+      const fullReplyText = await streamRefusalReply(lang, onChunk, signal, 'general_consultation')
+      return {
+        fullReplyText,
+        memoriesUsed: [],
+        performanceMeta: {
+          specialty: 'general_consultation',
+          refusal: true,
+        }
+      }
+    }
+
     let memoryPromptBlock = ''
     let memoriesUsed = []
 
