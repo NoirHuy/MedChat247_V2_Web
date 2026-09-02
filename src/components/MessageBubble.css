@@ -74,20 +74,7 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
-  margin: 16px 0 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.msg-heading--3::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 14px;
-  background: var(--bg-accent, #1a73e8);
-  border-radius: 2px;
-  flex-shrink: 0;
+  margin: 12px 0 6px;
 }
 
 .msg-heading--4 {
