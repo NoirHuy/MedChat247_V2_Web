@@ -287,23 +287,9 @@ export async function translateEnToViStreaming(englishText, onChunk, signal = nu
     const translationMessages = [
       {
         role: 'system',
-        content: `Bạn là chuyên gia biên tập và dịch thuật y văn lâm sàng của MedChat247.
-Hãy dịch câu trả lời y tế tiếng Anh dưới đây sang tiếng Việt chuẩn xác, văn phong mạch lạc và trình bày với bố cục Markdown chuyên nghiệp, thanh lịch:
-
-1. PHÂN CẤP TIÊU ĐỀ RÕ RÀNG (Headers):
-   - Sử dụng tiêu đề cấp 3 (###) cho các phần nội dung lớn (ví dụ: ### 1. Can thiệp lối sống, ### 2. Khuyến nghị điều trị bằng thuốc, ### 3. Lưu ý & Theo dõi chuyên môn).
-
-2. BÔI ĐẬM CÓ CHỌN LỌC (Chỉ bôi đậm đầu mục, KHÔNG bôi đậm tràn lan):
-   - Khi dùng gạch đầu dòng (-), CHỈ bôi đậm cụm từ tiêu đề ở đầu mỗi ý (ví dụ: "- **Giảm cân:** Giúp cải thiện độ nhạy insulin và giảm glucose máu.").
-   - TUYỆT ĐỐI KHÔNG bôi đậm các từ ngữ giải thích rải rác bên trong câu (như KHÔNG bôi đậm **carbohydrate**, **chất xơ**, **tân tạo glucose**... vì gây rối mắt).
-   - Tên thuốc chính (ví dụ **Metformin**) và chỉ số (ví dụ **HbA1c**) có thể bôi đậm để làm nổi bật.
-
-3. TRÌNH BÀY GỌN GÀNG, KHÔNG TÁCH DÒNG RỜI RẠC:
-   - Các nhóm thuốc bổ trợ hãy gom chung vào 1 dòng súc tích (ví dụ: "- **Các nhóm thuốc bổ trợ:** Sulfonylureas, ức chế DPP-4, đồng vận GLP-1 RA, ức chế SGLT-2 (cân nhắc theo bệnh nền tim mạch/thận)."), tránh tách mỗi tên thuốc thành một dòng gạch đầu dòng trống trải.
-
-4. BẢO ĐẢM TÍNH CHUYÊN NGHIỆP:
-   - TUYỆT ĐỐI KHÔNG sử dụng icon hay emoji (💊, ⏰, ⚠️...).
-   - TUYỆT ĐỐI KHÔNG thêm lời giải thích hay dẫn nhập ngoài lề, chỉ xuất bản dịch tiếng Việt có cấu trúc Markdown hoàn chỉnh.`
+        content: `Bạn là chuyên gia dịch thuật y khoa của MedChat247.
+Nhiệm vụ của bạn: Dịch chính xác, trung thực 100% toàn bộ nội dung câu trả lời y tế tiếng Anh dưới đây sang tiếng Việt chuẩn xác và tự nhiên.
+Tuyệt đối không thêm bớt, không tự ý thay đổi ý nghĩa hay cấu trúc văn bản gốc, và không thêm bất kỳ lời giải thích dẫn nhập ngoài lề nào.`
       },
       {
         role: 'user',
@@ -316,7 +302,7 @@ Hãy dịch câu trả lời y tế tiếng Anh dưới đây sang tiếng Việ
       model: env.openrouterModelChat || 'medchat',
       stream: true,
       maxTokens: 1200,
-      temperature: 0.2,
+      temperature: 0.1,
       timeoutMs: 40000,
       onChunk,
       signal
