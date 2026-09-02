@@ -170,9 +170,21 @@
   color: inherit;
 }
 
+.msg-paragraph-block {
+  margin: 0 0 10px;
+}
+
+.msg-paragraph-block:last-child {
+  margin-bottom: 0;
+}
+
 .detail-plain-line {
-  margin: 4px 0;
+  margin: 0 0 8px;
   line-height: 1.65;
+}
+
+.detail-plain-line:last-child {
+  margin-bottom: 0;
 }
 
 /* ─── Lists ────────────────────────────────────────────────── */

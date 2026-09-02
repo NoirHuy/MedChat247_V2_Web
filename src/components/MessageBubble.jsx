@@ -356,7 +356,51 @@ function renderBlock(block, key) {
         )
       }
 
-      // Phase 2: Báo cáo kết luận / Khuyến nghị hoặc Khối hỗn hợp
+      // Danh sách gạch đầu dòng chuẩn (Standard Bullet List)
+      if (isBulleted) {
+        return (
+          <ul className="message-list" key={key}>
+            {lines.map((line, i) => (
+              <li key={i}>{renderInline(line.trim().replace(/^[-*•]\s*/, ''), `${key}-${i}`)}</li>
+            ))}
+          </ul>
+        )
+      }
+
+      // Danh sách đánh số chuẩn (Standard Numbered List)
+      if (isOrdered) {
+        return (
+          <ol className="message-list message-list--ordered" key={key}>
+            {lines.map((line, i) => {
+              const match = line.trim().match(/^\d+\.\s*(.*)/)
+              return (
+                <li key={i}>{renderInline(match ? match[1] : line.trim(), `${key}-${i}`)}</li>
+              )
+            })}
+          </ol>
+        )
+      }
+
+      // Kiểm tra xem có phải là thẻ phân tích bệnh GraphRAG không
+      const hasDiseaseHeader = lines.some(line => {
+        const cleanLine = line.trim().replace(/[*#_`]/g, '').trim()
+        return /^(\d+)\.\s*(.*?)(?::|\s+)?~?(\d+)%\s*(xác suất|khả năng|ước tính|probability|percent|chance|prob)?$/i.test(cleanLine) ||
+               /^(\d+)\.\s*(.*?)\s*\((\d+)%\)/i.test(cleanLine)
+      })
+
+      if (!hasDiseaseHeader) {
+        return (
+          <div key={key} className="msg-paragraph-block">
+            {lines.map((line, i) => (
+              <p key={i} className="detail-plain-line">
+                {renderInline(line, `${key}-${i}`)}
+              </p>
+            ))}
+          </div>
+        )
+      }
+
+      // Phase 2: Báo cáo kết luận / Khuyến nghị hoặc Khối hỗn hợp GraphRAG
       return (
         <div key={key} className="msg-mixed-block">
           {lines.map((line, i) => {
